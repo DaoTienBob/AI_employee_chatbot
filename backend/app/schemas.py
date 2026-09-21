@@ -1,8 +1,10 @@
-"""Request/response schemas for the API (T03)."""
+"""Request/response schemas for the API (T03/T04)."""
 
 import re
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+from backend.app.models import ROLES
 
 _EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
@@ -48,3 +50,24 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
     expires_in: int  # seconds until the token expires
     user: UserPublic
+
+
+class DocumentPublic(BaseModel):
+    """Document record safe to expose (no file path, no raw content)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    document_name: str
+    file_type: str
+    file_size: int
+    allowed_roles: list[str]
+    uploaded_at: str  # ISO timestamp; str keeps the schema JSON-friendly
+
+
+class DocumentUploadResponse(BaseModel):
+    """Result of a successful /documents/upload (T04)."""
+
+    document: DocumentPublic
+    chunk_count: int
+    sections: list[str]  # section titles detected during extraction

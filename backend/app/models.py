@@ -1,9 +1,12 @@
-"""ORM models (T03). SQLite stores users and roles; from Day 2 on it also
-holds document records and conversation history (FR02/FR05)."""
+"""ORM models (T03/T04). SQLite stores users, roles and document records; from
+Day 4 on it also holds conversation history (FR05).
+
+Schema follows roadmap §8 (Basic Database Design).
+"""
 
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, String
+from sqlalchemy import Boolean, DateTime, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.app.database import Base
@@ -37,3 +40,41 @@ class User(Base):
 
     def __repr__(self) -> str:  # pragma: no cover - debugging aid
         return f"<User id={self.id} email={self.email!r} role={self.role!r}>"
+
+
+class Document(Base):
+    """An ingested document record (roadmap §8: document_id, document_name,
+    file_path, allowed_roles, uploaded_at).
+
+    ``allowed_*`` columns are scalar booleans mirroring the ChromaDB chunk
+    metadata flags (allow_employee / allow_hr / allow_manager, §3.2) so SQLite
+    and the vector store agree on permissions.
+    """
+
+    __tablename__ = "documents"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    document_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    file_path: Mapped[str] = mapped_column(String(1024), nullable=False)
+    file_type: Mapped[str] = mapped_column(String(32), nullable=False)  # pdf | docx
+    file_size: Mapped[int] = mapped_column(nullable=False)  # bytes
+    allowed_employee: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    allowed_hr: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    allowed_manager: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    uploaded_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, nullable=False
+    )
+    content: Mapped[str] = mapped_column(Text, nullable=False, default="")
+
+    def allowed_roles(self) -> list[str]:
+        """Role names granted access, in canonical order."""
+        flags = {
+            "employee": self.allowed_employee,
+            "hr": self.allowed_hr,
+            "manager": self.allowed_manager,
+        }
+        return [role for role in ROLES if flags[role]]
+
+    def __repr__(self) -> str:  # pragma: no cover - debugging aid
+        return f"<Document id={self.id} name={self.document_name!r} active={self.is_active}>"
