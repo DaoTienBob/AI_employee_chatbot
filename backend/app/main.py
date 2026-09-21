@@ -1,18 +1,37 @@
-"""FastAPI application entry point (T01: Initialize project and FastAPI backend).
+"""FastAPI application entry point (T01: initialize project and FastAPI backend;
+T03: authentication and roles served via the auth router).
 
 Run from the project root with:
 
     .venv/bin/uvicorn backend.app.main:app --reload --port 8000
 
-Completion check for T01: the API starts and ``/health`` returns success.
+Completion checks:
+- T01: the API starts and ``/health`` returns success.
+- T03: ``/auth/login`` issues a session; ``/auth/me`` identifies the role.
 """
+
+import contextlib
+from collections.abc import AsyncIterator
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app.config import get_settings
+from backend.app.database import SessionLocal, init_db
+from backend.app.routers import auth
+from backend.app.seed import seed_demo_users
 
 settings = get_settings()
+
+
+@contextlib.asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    """Create SQLite tables and seed demo users once at startup."""
+    init_db()
+    with SessionLocal() as db:
+        seed_demo_users(db)
+    yield
+
 
 app = FastAPI(
     title=settings.app_name,
@@ -21,6 +40,7 @@ app = FastAPI(
         "Role-aware RAG chatbot API. Authentication, document ingestion, "
         "role-filtered retrieval and grounded answers with source references."
     ),
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -30,6 +50,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(auth.router)
 
 
 @app.get("/health", tags=["system"])
