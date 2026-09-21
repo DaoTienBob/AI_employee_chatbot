@@ -1,0 +1,29 @@
+# --- Web framework / server ---
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+python-multipart>=0.0.12
+
+# --- Configuration ---
+pydantic>=2.9.0
+pydantic-settings>=2.6.0
+
+# --- Application data (SQLite, FR01/FR05) ---
+sqlalchemy>=2.0.35
+
+# --- Document parsing (FR02, T05) ---
+pypdf>=5.0.0
+python-docx>=1.1.2
+
+# --- Vector database (T08) ---
+chromadb>=0.5.20
+
+# --- Security: password hashing + session tokens (FR01/T03) ---
+bcrypt>=4.2.0
+PyJWT>=2.10.0
+
+# --- LLM integration (FR04/T13): Ollama client + generic HTTP for external APIs ---
+ollama>=0.4.0
+httpx>=0.27.0
+
+# --- Testing (Day 8) ---
+pytest>=8.3.0

@@ -1,0 +1,29 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Environment / secrets
+.env
+
+# Runtime data (SQLite, ChromaDB, uploads)
+data/
+
+# Node / React
+node_modules/
+dist/
+build/
+.vite/
+npm-debug.log*
+.eslintcache
+
+# Editors / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+Thumbs.db
