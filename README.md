@@ -120,6 +120,26 @@ Validation: `.pdf`/`.docx` only (extension + MIME cross-check, `400`), max
 `MAX_UPLOAD_SIZE_MB` (`413`), admin-only (`403`), role list must be a subset
 of `employee,hr,manager` (`400`), unreadable/scanned files (`422`).
 
+## Demo corpus (knowledge taxonomy)
+
+The assistant's knowledge base is organized into 4 categories — **Policy**,
+**Operations**, **Company tour**, **Contact** — with ~30 topics; see
+[`docs/knowledge-taxonomy.md`](docs/knowledge-taxonomy.md) for the full list
+and the suggested role visibility per document (compensation-sensitive topics
+like `Thưởng`, `Bảo hiểm` are HR/Manager-only; `Contact` feeds the fallback
+answer when no authorized evidence is found).
+
+```bash
+# Generate data/demo_corpus/*.docx + manifest.json (30 placeholder docs)
+.venv/bin/python backend/scripts/generate_demo_corpus.py
+
+# Upload them all as the admin (API server must be running)
+.venv/bin/python backend/scripts/upload_demo_corpus.py
+```
+
+Prefer DOCX for Vietnamese content: python-docx extracts Unicode natively,
+while PDFs need proper Unicode font maps or extraction fails.
+
 ## Planned API surface (from the roadmap)
 
 | Method | Endpoint              | Purpose / access                                |
