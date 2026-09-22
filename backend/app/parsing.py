@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from docx import Document as DocxDocument
+from docx.table import Table
 from pypdf import PdfReader
 
 # Headings-ish lines: short, no terminal punctuation, optionally numbered
@@ -132,7 +133,19 @@ def extract_docx(path: Path) -> ExtractedDocument:
     extracted = ExtractedDocument()
     current: Section | None = None
 
-    for paragraph in document.paragraphs:
+    def paragraphs_in_order(container):
+        for block in container.iter_inner_content():
+            if isinstance(block, Table):
+                seen_cells = set()
+                for row in block.rows:
+                    for cell in row.cells:
+                        if cell._tc not in seen_cells:
+                            seen_cells.add(cell._tc)
+                            yield from paragraphs_in_order(cell)
+            else:
+                yield block
+
+    for paragraph in paragraphs_in_order(document):
         text = paragraph.text.strip()
         if not text:
             continue

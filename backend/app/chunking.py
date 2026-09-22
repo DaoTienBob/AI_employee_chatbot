@@ -128,10 +128,5 @@ def chunk_document(
                 )
             )
 
-    # Merge a tiny trailing fragment into its predecessor when possible
-    # (keeps every chunk "usable" per the T06 done-criteria).
-    if len(chunks) > 1 and chunks[-1].token_count < overlap // 2:
-        last = chunks.pop()
-        chunks[-1].text = f"{chunks[-1].text} {last.text}".strip()
-        chunks[-1].token_count = len(chunks[-1].text.split())
+    # Keep section boundaries intact, including short final sections.
     return chunks

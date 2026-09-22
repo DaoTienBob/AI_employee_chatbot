@@ -66,7 +66,7 @@ class VectorStore:
         """
         return self._collection.get(
             where={"document_id": {"$eq": document_id}},
-            include=["documents", "metadatas"],
+            include=["documents", "metadatas", "embeddings"],
         )
 
     def restore_chunks(self, snapshot: dict) -> None:
@@ -76,6 +76,7 @@ class VectorStore:
                 ids=snapshot["ids"],
                 documents=snapshot["documents"],
                 metadatas=snapshot["metadatas"],
+                embeddings=snapshot["embeddings"],
             )
 
     def count_for_document(self, document_id: str) -> int:

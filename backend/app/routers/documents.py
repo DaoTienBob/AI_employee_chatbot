@@ -6,9 +6,11 @@ extract → chunk → embed/index into ChromaDB with role-flag metadata (T07-T09
 ``PUT /documents/{id}`` replaces a document plus its indexed chunks (T11).
 """
 
+import logging
 from pathlib import Path
+from uuid import uuid4
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, Query, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -24,6 +26,8 @@ from backend.app.schemas import (
 )
 from backend.app.security import get_current_user
 from backend.app.vector_store import get_vector_store
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
@@ -92,14 +96,9 @@ def _ingest_file(
     file: UploadFile,
     document: Document,
     requested_roles: list[str],
-) -> tuple[int, list[str]]:
-    """Validate, store, extract, chunk and index ``file`` for ``document``.
-
-    Shared by upload (new record) and replace (existing record). Parser
-    libraries raise a zoo of exception types on malformed input, so the
-    ingestion boundary catches broadly and degrades to a clean 422: the
-    session is rolled back and the stored file removed.
-    """
+    staged_files: list[Path],
+) -> tuple[list[Chunk], list[str]]:
+    """Stage a unique file and prepare chunks; the caller owns rollback."""
     settings = get_settings()
 
     # --- Validate file type (extension + MIME cross-check) and size ---
@@ -128,19 +127,18 @@ def _ingest_file(
 
     uploads_dir = Path(settings.upload_dir)
     uploads_dir.mkdir(parents=True, exist_ok=True)
-    target = uploads_dir / f"doc_{document.id}_{document.document_name}"
-    target.write_bytes(data)
+    target = uploads_dir / f"doc_{document.id}_{uuid4().hex}.{detected_type}"
+    staged_files.append(target)
     document.file_path = str(target)
+    target.write_bytes(data)
     db.flush()
 
     # --- Extract (T05) and chunk (T06) ---
     try:
         extracted = extract_text(target, detected_type)
-    except Exception as exc:  # noqa: BLE001 - see comment above
-        db.rollback()
-        target.unlink(missing_ok=True)
+    except Exception as exc:  # Malformed documents raise parser-specific errors.
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="The file could not be parsed; it may be corrupt, "
             "password-protected, or not a real PDF/DOCX document",
         ) from exc
@@ -148,10 +146,8 @@ def _ingest_file(
         # Titles alone (e.g. auto "Page 1" headings from blank/scanned pages)
         # are not readable content; such a document would be indexed with
         # zero chunks, so reject it as unreadable (T05 / FR02).
-        db.rollback()
-        target.unlink(missing_ok=True)
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="No readable text could be extracted from the document",
         )
     document.content = extracted.text
@@ -162,10 +158,56 @@ def _ingest_file(
         document_name=document.document_name,
         allowed_roles=requested_roles,
     )
-    # --- Embed + index (T07-T09): every chunk carries the role flags, so the
-    # permission filter can be applied inside the vector search itself (T10). ---
-    indexed = get_vector_store().index_chunks(chunks)
-    return indexed, extracted.section_titles
+    return chunks, extracted.section_titles
+
+
+def _save_document(
+    db: Session,
+    file: UploadFile,
+    document: Document,
+    requested_roles: list[str],
+    *,
+    replacing: bool = False,
+) -> tuple[DocumentPublic, int, list[str]]:
+    """Compensate file/index writes if ingestion or the SQL commit fails.
+
+    SQLite's write transaction (acquired by flush) serializes ingestions.
+    Snapshots include embeddings so recovery does not need the embedding model.
+    """
+    old_path = document.file_path if replacing else ""
+    store = None
+    snapshot = None
+    changed_index = False
+    doc_key = None
+    staged_files: list[Path] = []
+    try:
+        chunks, sections = _ingest_file(db, file, document, requested_roles, staged_files)
+        store = get_vector_store()
+        doc_key = f"DOC_{document.id:03d}"
+        if replacing:
+            snapshot = store.get_document_chunks(doc_key)
+        changed_index = True
+        store.delete_document_chunks(doc_key)
+        indexed = store.index_chunks(chunks)
+        public = _to_public(document)
+        db.commit()
+    except Exception:
+        try:
+            if changed_index:
+                store.delete_document_chunks(doc_key)
+                if snapshot is not None:
+                    store.restore_chunks(snapshot)
+        finally:
+            db.rollback()
+            for staged_path in staged_files:
+                staged_path.unlink(missing_ok=True)
+        raise
+    if old_path and old_path != document.file_path:
+        try:
+            Path(old_path).unlink(missing_ok=True)
+        except OSError:
+            logger.exception("Could not remove superseded file %s", old_path)
+    return public, indexed, sections
 
 
 @router.post("/upload", response_model=DocumentUploadResponse)
@@ -188,12 +230,9 @@ def upload_document(
         allowed_manager=False,
     )
     db.add(document)
-    indexed, sections = _ingest_file(db, file, document, requested_roles)
-
-    db.commit()
-    db.refresh(document)
+    public, indexed, sections = _save_document(db, file, document, requested_roles)
     return DocumentUploadResponse(
-        document=_to_public(document),
+        document=public,
         chunk_count=indexed,
         sections=sections,
     )
@@ -219,6 +258,19 @@ def list_documents(
     return [_to_public(d) for d in documents]
 
 
+@router.get("/search")
+def search_documents(
+    query: str = Query(..., min_length=1, max_length=2000),
+    current_user: User = Depends(get_current_user),
+) -> list[dict]:
+    """Search with the current database role, never a client-supplied role."""
+    if current_user.role not in ROLES:
+        raise HTTPException(status_code=403, detail="Unknown role")
+    if not query.strip():
+        raise HTTPException(status_code=422, detail="Query must not be blank")
+    return get_vector_store().search(query, current_user.role)
+
+
 @router.put("/{document_id}", response_model=DocumentReplaceResponse)
 def replace_document(
     document_id: int,
@@ -238,27 +290,12 @@ def replace_document(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
     requested_roles = _validate_roles(allowed_roles)
 
-    vector_store = get_vector_store()
-    doc_key = f"DOC_{document_id:03d}"
-    # Snapshot the old chunks so a failed replacement can restore them: the
-    # old version must stay retrievable when the new file is rejected.
-    snapshot = vector_store.get_document_chunks(doc_key)
-    vector_store.delete_document_chunks(doc_key)
-
-    old_path = Path(document.file_path) if document.file_path else None
-    try:
-        indexed, sections = _ingest_file(db, file, document, requested_roles)
-    except HTTPException:
-        vector_store.restore_chunks(snapshot)
-        raise
-
-    db.commit()
-    db.refresh(document)
-    if old_path and old_path.exists() and old_path != Path(document.file_path):
-        old_path.unlink(missing_ok=True)
+    public, indexed, sections = _save_document(
+        db, file, document, requested_roles, replacing=True
+    )
 
     return DocumentReplaceResponse(
-        document=_to_public(document),
+        document=public,
         chunk_count=indexed,
         sections=sections,
     )
