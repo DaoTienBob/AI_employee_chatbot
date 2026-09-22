@@ -128,9 +128,13 @@ of `employee,hr,manager` (`400`), unreadable/scanned files (`422`).
 
 - `GET /documents` lists only the documents the authenticated user's role may
   access (role always comes from the session, never the request).
+- `GET /documents/search?query=...` performs semantic search using the current
+  authenticated database role; returns authorized chunks and source metadata.
 - `PUT /documents/{id}` (admin only) replaces a document: old indexed chunks
   are removed first, the replacement content is re-extracted/chunked/indexed,
-  and the record is updated (T11).
+  and the record is updated (T11). Replacement files use unique paths; failures
+  during ingestion or commit restore the prior index, including saved embeddings.
+  This is compensating rollback across SQLite/files/Chroma, not crash-atomic storage.
 - `VectorStore.search(query, role)` (T10) applies the permission filter inside
   the ChromaDB query (`where={f"allow_{role}": True}`), so restricted chunks
   never become retrieval candidates — and can therefore never enter a future
@@ -150,7 +154,7 @@ curl -X PUT http://localhost:8000/documents/1 \
 Run the permission tests (T10/T12):
 
 ```bash
-.venv/bin/python -m pytest backend/tests/test_retrieval_permissions.py -v
+.venv/bin/python -m pytest backend/tests -v
 ```
 
 Live verification (API + indexed demo corpus):
