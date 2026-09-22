@@ -47,6 +47,17 @@ class ExtractedDocument:
         return "\n\n".join(parts)
 
     @property
+    def body_text(self) -> str:
+        """Paragraph text only, without section titles.
+
+        Upload validation uses this to decide whether a document actually
+        yielded readable content: a blank or scanned PDF page still produces
+        a per-page section title (``Page 1``), so title-based text is never
+        empty even when nothing was extracted.
+        """
+        return "\n\n".join(s.text for s in self.sections if s.text.strip())
+
+    @property
     def section_titles(self) -> list[str]:
         return [s.title for s in self.sections]
 

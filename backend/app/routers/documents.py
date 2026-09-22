@@ -122,8 +122,24 @@ def upload_document(
     db.flush()
 
     # --- Extract (T05) and chunk (T06) ---
-    extracted = extract_text(target, detected_type)
-    if not extracted.text.strip():
+    # Parser libraries raise a zoo of exception types on malformed input
+    # (pypdf: PdfReadError family; python-docx: PackageNotFoundError and
+    # friends), so the ingestion boundary catches broadly and degrades to a
+    # clean 422: roll back the record and remove the stored file.
+    try:
+        extracted = extract_text(target, detected_type)
+    except Exception as exc:  # noqa: BLE001 - see comment above
+        db.rollback()
+        target.unlink(missing_ok=True)
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="The file could not be parsed; it may be corrupt, "
+            "password-protected, or not a real PDF/DOCX document",
+        ) from exc
+    if not extracted.body_text.strip():
+        # Titles alone (e.g. auto "Page 1" headings from blank/scanned pages)
+        # are not readable content; such a document would be indexed with
+        # zero chunks, so reject it as unreadable (T05 / FR02).
         db.rollback()
         target.unlink(missing_ok=True)
         raise HTTPException(
