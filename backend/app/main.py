@@ -18,7 +18,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app.config import get_settings
 from backend.app.database import SessionLocal, init_db
-from backend.app.routers import auth
+from backend.app.routers import auth, documents
 from backend.app.seed import seed_demo_users
 
 settings = get_settings()
@@ -52,6 +52,7 @@ app.add_middleware(
 )
 
 app.include_router(auth.router)
+app.include_router(documents.router)
 
 
 @app.get("/health", tags=["system"])

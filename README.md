@@ -28,11 +28,13 @@ authorized to access, with supporting source references.
 │   │   ├── config.py   # Environment settings (.env)
 │   │   ├── main.py     # App entry point, /health (T01)
 │   │   ├── database.py # SQLAlchemy engine/session (T03)
-│   │   ├── models.py   # SQLite ORM models: User (T03)
-│   │   ├── schemas.py  # Pydantic request/response schemas (T03)
+│   │   ├── models.py   # SQLite ORM models: User, Document (T03/T04)
+│   │   ├── schemas.py  # Pydantic request/response schemas (T03/T04)
 │   │   ├── security.py # bcrypt hashing + JWT sessions (T03)
 │   │   ├── seed.py     # Demo users (T03)
-│   │   └── routers/    # API routers (auth.py, T03)
+│   │   ├── parsing.py  # PDF/DOCX text extraction (T05)
+│   │   ├── chunking.py # Token-aware chunking with source metadata (T06)
+│   │   └── routers/    # API routers (auth.py T03, documents.py T04)
 │   └── requirements.txt
 ├── frontend/           # React app (Vite) — login, chat, admin upload
 ├── data/               # Runtime artifacts: SQLite, ChromaDB, uploads (gitignored)
@@ -96,6 +98,47 @@ curl -s -X POST http://localhost:8000/auth/login \
 curl -s http://localhost:8000/auth/me \
   -H "Authorization: Bearer <access_token>"
 ```
+
+## Uploading documents (T04–T06, Day 2)
+
+Only users with the administrator permission (`admin@company.com`) can upload.
+Extraction (pypdf / python-docx) and ~400-token chunking with source metadata
+run during upload; embeddings and ChromaDB indexing follow on Day 3 (T07–T09).
+
+```bash
+TOKEN=$(curl -s -X POST http://localhost:8000/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "admin@company.com", "password": "password123"}' | python3 -c "import sys,json;print(json.load(sys.stdin)['access_token'])")
+
+curl -X POST http://localhost:8000/documents/upload \
+  -H "Authorization: Bearer $TOKEN" \
+  -F "file=@policy.pdf" \
+  -F "allowed_roles=hr,manager"
+```
+
+Validation: `.pdf`/`.docx` only (extension + MIME cross-check, `400`), max
+`MAX_UPLOAD_SIZE_MB` (`413`), admin-only (`403`), role list must be a subset
+of `employee,hr,manager` (`400`), unreadable/scanned files (`422`).
+
+## Demo corpus (knowledge taxonomy)
+
+The assistant's knowledge base is organized into 4 categories — **Policy**,
+**Operations**, **Company tour**, **Contact** — with ~30 topics; see
+[`docs/knowledge-taxonomy.md`](docs/knowledge-taxonomy.md) for the full list
+and the suggested role visibility per document (compensation-sensitive topics
+like `Thưởng`, `Bảo hiểm` are HR/Manager-only; `Contact` feeds the fallback
+answer when no authorized evidence is found).
+
+```bash
+# Generate data/demo_corpus/*.docx + manifest.json (30 placeholder docs)
+.venv/bin/python backend/scripts/generate_demo_corpus.py
+
+# Upload them all as the admin (API server must be running)
+.venv/bin/python backend/scripts/upload_demo_corpus.py
+```
+
+Prefer DOCX for Vietnamese content: python-docx extracts Unicode natively,
+while PDFs need proper Unicode font maps or extraction fails.
 
 ## Planned API surface (from the roadmap)
 
