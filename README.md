@@ -26,7 +26,13 @@ authorized to access, with supporting source references.
 ├── backend/            # FastAPI application
 │   ├── app/
 │   │   ├── config.py   # Environment settings (.env)
-│   │   └── main.py     # App entry point, /health (T01)
+│   │   ├── main.py     # App entry point, /health (T01)
+│   │   ├── database.py # SQLAlchemy engine/session (T03)
+│   │   ├── models.py   # SQLite ORM models: User (T03)
+│   │   ├── schemas.py  # Pydantic request/response schemas (T03)
+│   │   ├── security.py # bcrypt hashing + JWT sessions (T03)
+│   │   ├── seed.py     # Demo users (T03)
+│   │   └── routers/    # API routers (auth.py, T03)
 │   └── requirements.txt
 ├── frontend/           # React app (Vite) — login, chat, admin upload
 ├── data/               # Runtime artifacts: SQLite, ChromaDB, uploads (gitignored)
@@ -61,6 +67,34 @@ cp .env.example .env
 cd frontend
 npm install
 npm run dev          # http://localhost:5173
+```
+
+## Demo accounts (T03)
+
+Created automatically on backend startup and stored in SQLite (`data/app.db`)
+with bcrypt-hashed passwords:
+
+| Email                   | Password      | Role     | Admin |
+| ----------------------- | ------------- | -------- | ----- |
+| `employee@company.com`  | `password123` | employee | no    |
+| `hr@company.com`        | `password123` | hr       | no    |
+| `manager@company.com`   | `password123` | manager  | no    |
+| `admin@company.com`     | `password123` | employee | yes   |
+
+> Admin permission (document upload/replace) is a separate flag, not an
+> employee role (roadmap §3.4).
+
+Try it:
+
+```bash
+# Login (issue session)
+curl -s -X POST http://localhost:8000/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "employee@company.com", "password": "password123"}'
+
+# Identify the authenticated user and role
+curl -s http://localhost:8000/auth/me \
+  -H "Authorization: Bearer <access_token>"
 ```
 
 ## Planned API surface (from the roadmap)
