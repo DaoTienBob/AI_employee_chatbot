@@ -71,3 +71,11 @@ class DocumentUploadResponse(BaseModel):
     document: DocumentPublic
     chunk_count: int
     sections: list[str]  # section titles detected during extraction
+
+
+class DocumentReplaceResponse(BaseModel):
+    """Result of a successful PUT /documents/{id} replacement (T11/FR08)."""
+
+    document: DocumentPublic
+    chunk_count: int
+    sections: list[str]

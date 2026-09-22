@@ -1,13 +1,15 @@
-"""Document management endpoints (T04): admin-protected upload.
+"""Document management endpoints (T04, T07-T11).
 
 Flow (roadmap §4.3): verify admin permission → validate file type and size →
-extract → chunk → return record. Embedding/indexing into ChromaDB lands on
-Day 3 (T08); the SQLite record and file are stored here already.
+extract → chunk → embed/index into ChromaDB with role-flag metadata (T07-T09)
+→ return record. ``GET /documents`` lists only role-accessible documents and
+``PUT /documents/{id}`` replaces a document plus its indexed chunks (T11).
 """
 
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from backend.app.config import SUPPORTED_FILE_EXTENSIONS, get_settings
@@ -15,8 +17,13 @@ from backend.app.chunking import Chunk, chunk_document
 from backend.app.database import get_db
 from backend.app.models import Document, ROLES, User
 from backend.app.parsing import extract_text
-from backend.app.schemas import DocumentPublic, DocumentUploadResponse
+from backend.app.schemas import (
+    DocumentPublic,
+    DocumentReplaceResponse,
+    DocumentUploadResponse,
+)
 from backend.app.security import get_current_user
+from backend.app.vector_store import get_vector_store
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
@@ -66,17 +73,8 @@ def _check_declared_size(upload: UploadFile, max_bytes: int) -> None:
         )
 
 
-@router.post("/upload", response_model=DocumentUploadResponse)
-def upload_document(
-    file: UploadFile = File(...),
-    allowed_roles: str = Form(..., description="Comma-separated roles, e.g. 'hr,manager'"),
-    db: Session = Depends(get_db),
-    admin: User = Depends(require_admin),
-) -> DocumentUploadResponse:
-    """Upload a PDF/DOCX as an administrator; extracts and chunks the content."""
-    settings = get_settings()
-
-    # --- Validate role selection (FR02: admin selects permitted roles) ---
+def _validate_roles(allowed_roles: str) -> list[str]:
+    """Shared role-list validation for upload and replace (FR02)."""
     requested_roles = [r.strip().lower() for r in allowed_roles.split(",") if r.strip()]
     invalid = [r for r in requested_roles if r not in ROLES]
     if not requested_roles or invalid:
@@ -86,8 +84,25 @@ def upload_document(
             f"{', '.join(ROLES)}"
             + (f"; invalid: {', '.join(invalid)}" if invalid else ""),
         )
+    return requested_roles
 
-    # --- Validate file type (extension + MIME cross-check) ---
+
+def _ingest_file(
+    db: Session,
+    file: UploadFile,
+    document: Document,
+    requested_roles: list[str],
+) -> tuple[int, list[str]]:
+    """Validate, store, extract, chunk and index ``file`` for ``document``.
+
+    Shared by upload (new record) and replace (existing record). Parser
+    libraries raise a zoo of exception types on malformed input, so the
+    ingestion boundary catches broadly and degrades to a clean 422: the
+    session is rolled back and the stored file removed.
+    """
+    settings = get_settings()
+
+    # --- Validate file type (extension + MIME cross-check) and size ---
     detected_type = _file_type_for(file.filename or "", file.content_type)
     max_bytes = settings.max_upload_size_mb * 1024 * 1024
     _check_declared_size(file, max_bytes)
@@ -102,30 +117,23 @@ def upload_document(
     if not data:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Empty file")
 
-    # --- Persist file + SQLite record (roadmap §8: documents table) ---
+    # --- Update record fields and persist the file (roadmap §8) ---
+    document.document_name = Path(file.filename or "unnamed").name
+    document.file_type = detected_type
+    document.file_size = len(data)
+    document.allowed_employee = "employee" in requested_roles
+    document.allowed_hr = "hr" in requested_roles
+    document.allowed_manager = "manager" in requested_roles
+    db.flush()  # assign document.id for the storage path
+
     uploads_dir = Path(settings.upload_dir)
     uploads_dir.mkdir(parents=True, exist_ok=True)
-    document = Document(
-        document_name=Path(file.filename or "unnamed").name,
-        file_path="",
-        file_type=detected_type,
-        file_size=len(data),
-        allowed_employee="employee" in requested_roles,
-        allowed_hr="hr" in requested_roles,
-        allowed_manager="manager" in requested_roles,
-    )
-    db.add(document)
-    db.flush()  # assign document.id
     target = uploads_dir / f"doc_{document.id}_{document.document_name}"
     target.write_bytes(data)
     document.file_path = str(target)
     db.flush()
 
     # --- Extract (T05) and chunk (T06) ---
-    # Parser libraries raise a zoo of exception types on malformed input
-    # (pypdf: PdfReadError family; python-docx: PackageNotFoundError and
-    # friends), so the ingestion boundary catches broadly and degrades to a
-    # clean 422: roll back the record and remove the stored file.
     try:
         extracted = extract_text(target, detected_type)
     except Exception as exc:  # noqa: BLE001 - see comment above
@@ -154,21 +162,114 @@ def upload_document(
         document_name=document.document_name,
         allowed_roles=requested_roles,
     )
-    # Chunks are embedded into ChromaDB on Day 3 (T08); producing chunks with
-    # usable source metadata is the Day 2 deliverable.
+    # --- Embed + index (T07-T09): every chunk carries the role flags, so the
+    # permission filter can be applied inside the vector search itself (T10). ---
+    indexed = get_vector_store().index_chunks(chunks)
+    return indexed, extracted.section_titles
+
+
+@router.post("/upload", response_model=DocumentUploadResponse)
+def upload_document(
+    file: UploadFile = File(...),
+    allowed_roles: str = Form(..., description="Comma-separated roles, e.g. 'hr,manager'"),
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+) -> DocumentUploadResponse:
+    """Upload a PDF/DOCX as an administrator; extracts, chunks and indexes it."""
+    requested_roles = _validate_roles(allowed_roles)
+
+    document = Document(
+        document_name=Path(file.filename or "unnamed").name,
+        file_path="",
+        file_type="",
+        file_size=0,
+        allowed_employee=False,
+        allowed_hr=False,
+        allowed_manager=False,
+    )
+    db.add(document)
+    indexed, sections = _ingest_file(db, file, document, requested_roles)
+
     db.commit()
     db.refresh(document)
+    return DocumentUploadResponse(
+        document=_to_public(document),
+        chunk_count=indexed,
+        sections=sections,
+    )
 
-    public = DocumentPublic(
+
+@router.get("", response_model=list[DocumentPublic])
+def list_documents(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[DocumentPublic]:
+    """List only documents the current user's role may access (FR03).
+
+    The role comes from the authenticated session, never from the request.
+    """
+    role = current_user.role
+    if role not in ROLES:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"Unknown role {role!r}")
+    documents = db.scalars(
+        select(Document)
+        .where(Document.is_active.is_(True), getattr(Document, f"allowed_{role}").is_(True))
+        .order_by(Document.id)
+    ).all()
+    return [_to_public(d) for d in documents]
+
+
+@router.put("/{document_id}", response_model=DocumentReplaceResponse)
+def replace_document(
+    document_id: int,
+    file: UploadFile = File(...),
+    allowed_roles: str = Form(..., description="Comma-separated roles, e.g. 'hr,manager'"),
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+) -> DocumentReplaceResponse:
+    """Replace a document and its indexed content (T11 / FR08).
+
+    Removes the old indexed chunks first (roadmap risk mitigation: outdated
+    content must not surface after replacement), then indexes the replacement
+    and updates the document record.
+    """
+    document = db.get(Document, document_id)
+    if document is None or not document.is_active:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+    requested_roles = _validate_roles(allowed_roles)
+
+    vector_store = get_vector_store()
+    doc_key = f"DOC_{document_id:03d}"
+    # Snapshot the old chunks so a failed replacement can restore them: the
+    # old version must stay retrievable when the new file is rejected.
+    snapshot = vector_store.get_document_chunks(doc_key)
+    vector_store.delete_document_chunks(doc_key)
+
+    old_path = Path(document.file_path) if document.file_path else None
+    try:
+        indexed, sections = _ingest_file(db, file, document, requested_roles)
+    except HTTPException:
+        vector_store.restore_chunks(snapshot)
+        raise
+
+    db.commit()
+    db.refresh(document)
+    if old_path and old_path.exists() and old_path != Path(document.file_path):
+        old_path.unlink(missing_ok=True)
+
+    return DocumentReplaceResponse(
+        document=_to_public(document),
+        chunk_count=indexed,
+        sections=sections,
+    )
+
+
+def _to_public(document: Document) -> DocumentPublic:
+    return DocumentPublic(
         id=document.id,
         document_name=document.document_name,
         file_type=document.file_type,
         file_size=document.file_size,
         allowed_roles=document.allowed_roles(),
         uploaded_at=document.uploaded_at.isoformat(),
-    )
-    return DocumentUploadResponse(
-        document=public,
-        chunk_count=len(chunks),
-        sections=extracted.section_titles,
     )

@@ -115,7 +115,10 @@ def chunk_document(
             counter += 1
             chunks.append(
                 Chunk(
-                    chunk_id=f"CHUNK_{counter:03d}",
+                    # IDs must be unique across the whole collection (the
+                    # vector store keys chunks by id), so the document id is
+                    # part of the chunk id.
+                    chunk_id=f"{document_id}_CHUNK_{counter:03d}",
                     document_id=document_id,
                     document_name=document_name,
                     section=section_title,

@@ -34,7 +34,9 @@ authorized to access, with supporting source references.
 │   │   ├── seed.py     # Demo users (T03)
 │   │   ├── parsing.py  # PDF/DOCX text extraction (T05)
 │   │   ├── chunking.py # Token-aware chunking with source metadata (T06)
-│   │   └── routers/    # API routers (auth.py T03, documents.py T04)
+│   │   ├── vector_store.py # ChromaDB indexing + role-filtered search (T07-T10)
+│   │   └── routers/    # API routers (auth.py T03, documents.py T04/T11)
+│   ├── tests/          # Retrieval permission tests (T10/T12)
 │   └── requirements.txt
 ├── frontend/           # React app (Vite) — login, chat, admin upload
 ├── data/               # Runtime artifacts: SQLite, ChromaDB, uploads (gitignored)
@@ -99,11 +101,13 @@ curl -s http://localhost:8000/auth/me \
   -H "Authorization: Bearer <access_token>"
 ```
 
-## Uploading documents (T04–T06, Day 2)
+## Uploading documents (T04–T09, Days 2–3)
 
 Only users with the administrator permission (`admin@company.com`) can upload.
-Extraction (pypdf / python-docx) and ~400-token chunking with source metadata
-run during upload; embeddings and ChromaDB indexing follow on Day 3 (T07–T09).
+Upload runs the full ingestion pipeline: validation (pypdf / python-docx
+extraction), ~400-token chunking with source metadata, embedding (Chroma
+default ONNX MiniLM) and ChromaDB indexing where every chunk inherits the
+document's role flags (`allow_employee` / `allow_hr` / `allow_manager`).
 
 ```bash
 TOKEN=$(curl -s -X POST http://localhost:8000/auth/login \
@@ -119,6 +123,41 @@ curl -X POST http://localhost:8000/documents/upload \
 Validation: `.pdf`/`.docx` only (extension + MIME cross-check, `400`), max
 `MAX_UPLOAD_SIZE_MB` (`413`), admin-only (`403`), role list must be a subset
 of `employee,hr,manager` (`400`), unreadable/scanned files (`422`).
+
+## Role-aware retrieval (T10–T12, Day 4)
+
+- `GET /documents` lists only the documents the authenticated user's role may
+  access (role always comes from the session, never the request).
+- `PUT /documents/{id}` (admin only) replaces a document: old indexed chunks
+  are removed first, the replacement content is re-extracted/chunked/indexed,
+  and the record is updated (T11).
+- `VectorStore.search(query, role)` (T10) applies the permission filter inside
+  the ChromaDB query (`where={f"allow_{role}": True}`), so restricted chunks
+  never become retrieval candidates — and can therefore never enter a future
+  LLM prompt.
+
+```bash
+# List documents visible to the current role
+curl http://localhost:8000/documents -H "Authorization: Bearer <access_token>"
+
+# Replace a document (admin)
+curl -X PUT http://localhost:8000/documents/1 \
+  -H "Authorization: Bearer $TOKEN" \
+  -F "file=@policy_v2.docx" \
+  -F "allowed_roles=employee,hr,manager"
+```
+
+Run the permission tests (T10/T12):
+
+```bash
+.venv/bin/python -m pytest backend/tests/test_retrieval_permissions.py -v
+```
+
+Live verification (API + indexed demo corpus):
+
+```bash
+.venv/bin/python backend/scripts/verify_phase2.py   # requires the API running
+```
 
 ## Demo corpus (knowledge taxonomy)
 
