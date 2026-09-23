@@ -20,6 +20,11 @@ DEMO_USERS: dict[str, tuple[str, str, bool]] = {
     "manager@company.com": ("Marc Manager", "manager", False),
     # Admin permission is separate from the employee role (§3.4).
     "admin@company.com": ("Ava Admin", "employee", True),
+    # Aliases matching UI placeholder / documentation
+    "employee@example.com": ("Dana Employee", "employee", False),
+    "hr@example.com": ("Hana HR", "hr", False),
+    "manager@example.com": ("Marc Manager", "manager", False),
+    "admin@example.com": ("Ava Admin", "employee", True),
 }
 
 

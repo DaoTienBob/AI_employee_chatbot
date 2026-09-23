@@ -72,7 +72,7 @@ def _check_declared_size(upload: UploadFile, max_bytes: int) -> None:
     """Reject uploads whose declared size exceeds the limit (fast path)."""
     if upload.size is not None and upload.size > max_bytes:
         raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            status_code=getattr(status, "HTTP_413_CONTENT_TOO_LARGE", 413),
             detail=f"File exceeds the {max_bytes // (1024 * 1024)} MB upload limit",
         )
 
@@ -110,7 +110,7 @@ def _ingest_file(
     data = file.file.read(max_bytes + 1)
     if len(data) > max_bytes:
         raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            status_code=getattr(status, "HTTP_413_CONTENT_TOO_LARGE", 413),
             detail=f"File exceeds the {settings.max_upload_size_mb} MB upload limit",
         )
     if not data:

@@ -104,6 +104,12 @@ class VectorStore:
         if role not in ROLES:
             raise ValueError(f"Unknown role: {role!r}")
         k = top_k or get_settings().retrieval_top_k
+        logger.info(
+            "VectorStore.search | role=%s top_k=%d filter=%s",
+            role,
+            k,
+            {"allow_%s" % role: {"$eq": True}},
+        )
         result = self._collection.query(
             query_texts=[query],
             n_results=k,
@@ -124,6 +130,7 @@ class VectorStore:
                     "distance": distances[0][i] if distances and distances[0] else None,
                 }
             )
+        logger.info("VectorStore.search | role=%s returned %d hits", role, len(hits))
         return hits
 
 

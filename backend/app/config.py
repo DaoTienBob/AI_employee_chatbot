@@ -7,6 +7,7 @@ sane default so the app runs out of the box for local development.
 from functools import lru_cache
 from pathlib import Path
 
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # backend/app/config.py -> project root is three levels up
@@ -27,7 +28,10 @@ class Settings(BaseSettings):
     # --- Application ---
     app_name: str = "AI Employee Knowledge Assistant"
     app_version: str = "0.1.0"
-    debug: bool = False
+    debug: bool = Field(
+        default=True,
+        validation_alias=AliasChoices("debug", "app_debug", "DEBUG", "APP_DEBUG"),
+    )
 
     # --- Sessions / security (FR01) ---
     secret_key: str = "dev-only-change-me"
@@ -51,6 +55,13 @@ class Settings(BaseSettings):
 
     # --- Retrieval (T10) ---
     retrieval_top_k: int = 5
+
+    # --- Logging ---
+    log_dir: str = str(DATA_DIR / "logs")
+    log_file: str = "rag.log"
+    log_level: str = "INFO"
+    log_max_bytes: int = 5 * 1024 * 1024  # 5 MB per log file
+    log_backup_count: int = 3
 
     # --- LLM (FR04, T13): "ollama" for the local model, "openai" for an external API ---
     llm_provider: str = "ollama"

@@ -121,6 +121,7 @@ def extract_pdf(path: Path) -> ExtractedDocument:
     extracted = ExtractedDocument()
     for page_number, page in enumerate(reader.pages, start=1):
         raw = page.extract_text() or ""
+        raw = re.sub(r"-\n(?=[a-z])", "", raw)  # de-hyphenate line breaks across lines
         paragraphs = _clean_paragraphs(raw.splitlines())
         page_sections = _group_paragraphs_into_sections(paragraphs, f"Page {page_number}")
         extracted.sections.extend(page_sections)

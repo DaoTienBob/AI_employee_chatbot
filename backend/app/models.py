@@ -78,3 +78,48 @@ class Document(Base):
 
     def __repr__(self) -> str:  # pragma: no cover - debugging aid
         return f"<Document id={self.id} name={self.document_name!r} active={self.is_active}>"
+
+
+# ---------------------------------------------------------------------------
+# Conversation history (T16 / FR05, roadmap §8)
+# ---------------------------------------------------------------------------
+
+
+class Conversation(Base):
+    """A chat session owned by one user.
+
+    Ownership is enforced at the API layer (T18): a user may only read or
+    continue conversations they created.
+    """
+
+    __tablename__ = "conversations"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, nullable=False
+    )
+
+    def __repr__(self) -> str:  # pragma: no cover
+        return f"<Conversation id={self.id} user_id={self.user_id}>"
+
+
+class Message(Base):
+    """A single message inside a conversation.
+
+    ``role`` is ``"user"`` or ``"assistant"`` — matching the LLM message-list
+    convention so history rows can be fed back into the LLM directly.
+    """
+
+    __tablename__ = "messages"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    conversation_id: Mapped[int] = mapped_column(nullable=False, index=True)
+    role: Mapped[str] = mapped_column(String(16), nullable=False)  # user | assistant
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, nullable=False
+    )
+
+    def __repr__(self) -> str:  # pragma: no cover
+        return f"<Message id={self.id} conv={self.conversation_id} role={self.role!r}>"
