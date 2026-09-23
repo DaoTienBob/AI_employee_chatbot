@@ -50,13 +50,14 @@ class OllamaClient(LLMClient):
     ``settings.ollama_base_url``.  Both are configurable via ``.env``.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, *, model: str | None = None, timeout: float = 120.0, json_mode: bool = False) -> None:
         settings = get_settings()
         try:
             import ollama  # noqa: PLC0415 — lazy import, heavy at startup
 
-            self._client = ollama.Client(host=settings.ollama_base_url)
-            self._model = settings.llm_model
+            self._client = ollama.Client(host=settings.ollama_base_url, timeout=timeout)
+            self._model = model or settings.llm_model
+            self._json_mode = json_mode
         except ImportError as exc:  # pragma: no cover
             raise LLMError("ollama package is not installed") from exc
 
@@ -67,6 +68,7 @@ class OllamaClient(LLMClient):
                 model=self._model,
                 messages=messages,
                 options={"temperature": temperature},
+                **({"format": "json", "think": False} if self._json_mode else {}),
             )
             return response["message"]["content"].strip()
         except Exception as exc:
@@ -91,7 +93,7 @@ class OpenAIClient(LLMClient):
     ``OPENAI_BASE_URL`` in ``.env``.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, *, model: str | None = None, timeout: float = 120.0) -> None:
         import httpx  # noqa: PLC0415
 
         settings = get_settings()
@@ -101,14 +103,14 @@ class OpenAIClient(LLMClient):
             )
         self._base_url = settings.openai_base_url.rstrip("/")
         self._api_key = settings.openai_api_key
-        self._model = settings.llm_model
+        self._model = model or settings.llm_model
         self._client = httpx.Client(
             base_url=self._base_url,
             headers={
                 "Authorization": f"Bearer {self._api_key}",
                 "Content-Type": "application/json",
             },
-            timeout=120.0,
+            timeout=timeout,
         )
 
     def complete(self, messages: list[dict], *, temperature: float = 0.2) -> str:

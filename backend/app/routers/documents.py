@@ -268,7 +268,10 @@ def search_documents(
         raise HTTPException(status_code=403, detail="Unknown role")
     if not query.strip():
         raise HTTPException(status_code=422, detail="Query must not be blank")
-    return get_vector_store().search(query, current_user.role)
+    try:
+        return get_vector_store().search(query, current_user.role)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @router.put("/{document_id}", response_model=DocumentReplaceResponse)

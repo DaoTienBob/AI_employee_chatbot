@@ -7,3 +7,12 @@ _TMP_DATA = tempfile.mkdtemp(prefix="chatbot_phase2_tests_")
 os.environ["DATABASE_URL"] = f"sqlite:///{_TMP_DATA}/test.db"
 os.environ["CHROMA_DIR"] = f"{_TMP_DATA}/chroma"
 os.environ["UPLOAD_DIR"] = f"{_TMP_DATA}/uploads"
+
+# Tests use the small cached model regardless of the developer model selection.
+os.environ["EMBEDDING_PROVIDER"] = "minilm"
+os.environ["EMBEDDING_MODEL"] = "all-MiniLM-L6-v2"
+os.environ["EMBEDDING_QUERY_PREFIX"] = ""
+os.environ["EMBEDDING_DOCUMENT_PREFIX"] = ""
+
+# Deterministic tests; dedicated rewriting tests enable/mock the rewrite model.
+os.environ["QUERY_REWRITE_ENABLED"] = "false"

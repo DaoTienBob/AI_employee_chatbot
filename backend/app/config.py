@@ -6,6 +6,7 @@ sane default so the app runs out of the box for local development.
 
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
 from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -35,7 +36,7 @@ class Settings(BaseSettings):
 
     # --- Sessions / security (FR01) ---
     secret_key: str = "dev-only-change-me"
-    access_token_expire_minutes: int = 480
+    access_token_expire_minutes: int = 60
 
     # --- Storage ---
     database_url: str = f"sqlite:///{DATA_DIR / 'app.db'}"
@@ -53,8 +54,25 @@ class Settings(BaseSettings):
     chunk_size_tokens: int = 400
     chunk_overlap_tokens: int = 50
 
+    # --- Embeddings (independent of the answer-generation LLM) ---
+    embedding_provider: Literal["minilm", "sentence_transformers", "ollama"] = "minilm"
+    embedding_model: str = "all-MiniLM-L6-v2"
+    embedding_query_prefix: str = ""
+    embedding_document_prefix: str = ""
+    embedding_device: str = "cpu"
+    embedding_cache_dir: str = str(DATA_DIR / "models")
+    embedding_timeout_seconds: float = 120.0
+
+    # --- Query rewriting (T14/T16/T18); uses LLM_PROVIDER ---
+    query_rewrite_enabled: bool = True
+    query_rewrite_model: str = ""  # blank uses LLM_MODEL
+    query_rewrite_timeout_seconds: float = Field(default=15.0, gt=0)
+
     # --- Retrieval (T10) ---
     retrieval_top_k: int = 5
+
+    # --- Index consistency (RBAC drift check) ---
+    verify_index_on_startup: bool = True
 
     # --- Logging ---
     log_dir: str = str(DATA_DIR / "logs")

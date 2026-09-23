@@ -5,7 +5,7 @@ generation flow for one user question:
 
 1. Resolve or create a ``Conversation`` owned by this user.
 2. Load recent safe history (T16) from that conversation.
-3. Embed the question (+context) and retrieve authorized chunks (T10).
+3. Rewrite intent using user-only context; search original and rewrite with RBAC.
 4. Fallback: if evidence is too weak, return a safe message (T17/FR07).
 5. Build a grounding prompt with only authorized chunks.
 6. Call the LLM (T13).
@@ -33,6 +33,7 @@ from backend.app.logging_config import setup_logging
 from backend.app.models import Conversation, Message, ROLES
 from backend.app.schemas import ChatResponse, SourceReference
 from backend.app.vector_store import get_vector_store
+from backend.app.query_rewriting import rewrite_query, retrieve_queries
 
 if TYPE_CHECKING:
     from backend.app.models import User
@@ -59,9 +60,13 @@ HISTORY_WINDOW: int = 6  # 3 turns = 3 user + 3 assistant
 # System prompt template — authorized chunks are inserted as {context}.
 _SYSTEM_PROMPT = """\
 You are the AI Employee Knowledge Assistant for an internal company knowledge base.
-Answer the employee's question using ONLY the document excerpts provided below.
-If the excerpts do not contain enough information to answer confidently, say so clearly
-instead of guessing. Do not reveal restricted information beyond what is shown.
+Answer ONLY the employee's MOST RECENT question. Earlier messages in this
+conversation are context for intent only — never answer them, never summarize
+them, and never mention them in your reply.
+Use ONLY the document excerpts provided below. If the excerpts do not contain
+enough information to answer confidently, say so clearly instead of guessing.
+Do not infer facts that go beyond what the excerpts explicitly state.
+Do not reveal restricted information beyond what is shown.
 Be concise and helpful.
 
 --- Authorized document excerpts ---
@@ -73,6 +78,31 @@ _FALLBACK_ANSWER = (
     "I'm sorry, I couldn't find sufficient information in your authorized documents "
     "to answer that question. Please contact HR or your manager for further assistance."
 )
+
+# The model may refuse in its own words when the excerpts do not contain the
+# answer. Detect these refusals so the API reports them as fallback results
+# (sources cleared) instead of pretending the question was answered.
+_REFUSAL_MARKERS = (
+    # Vietnamese
+    "không có thông tin", "không thể trả lời", "không tìm thấy thông tin",
+    "không được đề cập", "không đủ thông tin", "không có đủ thông tin",
+    "tôi không tìm thấy", "không đề cập", "không nêu",
+    # English
+    "not mentioned in", "no information", "couldn't find", "could not find",
+    "not enough information", "insufficient information", "do not contain",
+    "does not contain", "don't have information", "unable to find",
+)
+
+
+def _is_refusal(answer: str) -> bool:
+    """Heuristic: did the model decline for lack of evidence?
+
+    Only flags refusals — a genuine answer rarely contains several of these
+    phrases, and false positives would merely convert a hedged answer into a
+    standard fallback message, which is still safe.
+    """
+    lowered = answer.lower()
+    return sum(marker in lowered for marker in _REFUSAL_MARKERS) >= 2
 
 
 # ---------------------------------------------------------------------------
@@ -130,21 +160,6 @@ def _load_history(conversation_id: int, db: Session) -> list[dict]:
     ).all()
     # Reverse to chronological order for the prompt.
     return [{"role": m.role, "content": m.content} for m in reversed(rows)]
-
-
-def _build_retrieval_query(question: str, history: list[dict]) -> str:
-    """Combine the current question with safe recent context for better retrieval.
-
-    Only the last *user* message (if any) is appended to avoid the query
-    growing unbounded or accidentally embedding assistant content that might
-    contain sensitive source text.
-    """
-    last_user = next(
-        (m["content"] for m in reversed(history) if m["role"] == "user"), ""
-    )
-    if last_user and last_user != question:
-        return f"{last_user}\n{question}"
-    return question
 
 
 def _build_sources(hits: list[dict]) -> list[SourceReference]:
@@ -222,20 +237,22 @@ def answer_question(
     # ------------------------------------------------------------------
     # 3. Embed + retrieve authorized chunks (T10)
     # ------------------------------------------------------------------
-    retrieval_query = _build_retrieval_query(question, history)
+    rewrite = rewrite_query(question, history)
+    if rewrite.clarification:
+        _persist_messages(conv.id, question, rewrite.clarification, db)
+        return ChatResponse(answer=rewrite.clarification, sources=[],
+                            conversation_id=conv.id, fallback=True)
+    retrieval_query = rewrite.query
     settings = get_settings()
     logger.info(
-        "RAG retrieval start | user=%d role=%s top_k=%d query=%r",
+        "RAG retrieval start | user=%d role=%s top_k=%d query=%.120r",
         user.id,
         user.role,
         settings.retrieval_top_k,
         retrieval_query,
     )
-    hits = get_vector_store().search(
-        retrieval_query,
-        user.role,
-        top_k=settings.retrieval_top_k,
-    )
+    hits = retrieve_queries(get_vector_store(), question, retrieval_query,
+                            user.role, settings.retrieval_top_k)
     logger.info(
         "RAG retrieval done | user=%d role=%s raw_hits=%d",
         user.id,
@@ -251,6 +268,7 @@ def answer_question(
             meta.get("section", ""),
             hit.get("distance"),
         )
+
 
     # ------------------------------------------------------------------
     # 4. Fallback check (T17/FR07)
@@ -294,7 +312,18 @@ def answer_question(
     context = "\n\n".join(context_blocks)
 
     system_message = {"role": "system", "content": _SYSTEM_PROMPT.format(context=context)}
-    messages: list[dict] = [system_message, *history, {"role": "user", "content": question}]
+    # Prior assistant answers may contain evidence from a former role/version.
+    # Supply user questions only as inert context text inside the system prompt
+    # — never as chat turns, which small models tend to answer in sequence.
+    previous_questions = [m["content"] for m in history if m["role"] == "user"]
+    if previous_questions:
+        system_message["content"] += (
+            "\n--- Earlier questions in this conversation (context only, "
+            "DO NOT answer these) ---\n"
+            + "\n".join("- " + q for q in previous_questions)
+            + "\n--- End of earlier questions ---\n"
+        )
+    messages: list[dict] = [system_message, {"role": "user", "content": question}]
 
     # ------------------------------------------------------------------
     # 6. Call LLM (T13)
@@ -318,14 +347,29 @@ def answer_question(
         )
 
     # ------------------------------------------------------------------
-    # 7. Persist both messages (T16)
+    # 7. Detect model refusals (T17): "no evidence in the excerpts" is a
+    #    fallback outcome, not an answer — do not attach sources to it.
+    # ------------------------------------------------------------------
+    if _is_refusal(answer):
+        logger.info("LLM refused for lack of evidence; reporting as fallback")
+        _persist_messages(conv.id, question, answer, db)
+        return ChatResponse(
+            answer=answer,
+            sources=[],
+            conversation_id=conv.id,
+            fallback=True,
+        )
+
+    # ------------------------------------------------------------------
+    # 8. Persist both messages (T16)
     # ------------------------------------------------------------------
     _persist_messages(conv.id, question, answer, db)
 
     # ------------------------------------------------------------------
-    # 8. Build source references (T15)
+    # 9. Build source references (T15) — capped to the strongest chunks
+    #    actually supplied to the prompt.
     # ------------------------------------------------------------------
-    sources = _build_sources(useful_hits)
+    sources = _build_sources(useful_hits[:3])
 
     return ChatResponse(
         answer=answer,

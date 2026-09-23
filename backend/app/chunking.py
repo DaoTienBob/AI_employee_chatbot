@@ -1,7 +1,7 @@
 """Document chunking (T06).
 
-Splits cleaned section text into ~300-500 token chunks (token ≈ whitespace-
-separated word, consistent with the sprint's approximation) and attaches the
+Splits cleaned section text into word windows, then subdivides to fit the
+local embedding tokenizer context (including its prefix), and attaches the
 source metadata required for citations and permission filtering (roadmap
 §3.2): document_id, document_name, section, chunk_id and scalar role flags.
 """
@@ -10,6 +10,7 @@ import re
 from dataclasses import dataclass
 
 from backend.app.config import get_settings
+from backend.app.embeddings import get_embeddings
 
 
 @dataclass
@@ -111,7 +112,9 @@ def chunk_document(
         text = " ".join(section_text.split())
         if not text:
             continue
-        for window in _split_into_token_windows(text, size, overlap):
+        windows = [piece for window in _split_into_token_windows(text, size, overlap)
+                   for piece in get_embeddings().split_passage(window)]
+        for window in windows:
             counter += 1
             chunks.append(
                 Chunk(

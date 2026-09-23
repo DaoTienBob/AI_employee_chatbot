@@ -8,6 +8,7 @@ accounts exist so login can be demonstrated before any admin UI exists.
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from backend.app.config import get_settings
 from backend.app.models import User
 from backend.app.security import hash_password
 
@@ -29,7 +30,15 @@ DEMO_USERS: dict[str, tuple[str, str, bool]] = {
 
 
 def seed_demo_users(db: Session) -> None:
-    """Create the demo users once; safe to call on every startup."""
+    """Create the demo users once; safe to call on every startup.
+
+    Demo accounts (including two administrator accounts with a known password)
+    are only seeded when the application runs in debug mode. Non-debug
+    deployments must provision real users out of band.
+    """
+    if not get_settings().debug:
+        print("Skipping demo user seeding (debug mode disabled)")
+        return
     for email, (full_name, role, is_admin) in DEMO_USERS.items():
         exists = db.scalar(select(User).where(User.email == email))
         if exists is not None:

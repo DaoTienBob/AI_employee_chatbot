@@ -1,8 +1,8 @@
 """Vector store: ChromaDB indexing, embeddings and role-filtered retrieval
 (T07-T10, FR03).
 
-- Embeddings: Chroma's default embedding function (local ONNX MiniLM); the
-  same model embeds documents and questions, so vectors are comparable (T07).
+- Embeddings: configured local model or Ollama, with separate query/document
+  prefixes and a model-specific collection (T07).
 - Metadata: every chunk carries document_id, document_name, section, chunk_id
   and the scalar role flags (allow_employee / allow_hr / allow_manager) copied
   from its parent document (T09, roadmap §3.2/§8).
@@ -16,11 +16,9 @@ import logging
 from backend.app.chunking import Chunk
 from backend.app.config import get_settings
 from backend.app.models import ROLES
+from backend.app.embeddings import get_embeddings
 
 logger = logging.getLogger(__name__)
-
-_COLLECTION_NAME = "documents"
-
 
 class VectorStore:
     """Thin wrapper around the ChromaDB persistent collection."""
@@ -30,10 +28,10 @@ class VectorStore:
 
         settings = get_settings()
         self._client = chromadb.PersistentClient(path=settings.chroma_dir)
-        self._embedding = chromadb.utils.embedding_functions.DefaultEmbeddingFunction()
+        self._embedding = get_embeddings()
         self._collection = self._client.get_or_create_collection(
-            name=_COLLECTION_NAME,
-            embedding_function=self._embedding,
+            name=self._embedding.collection_name,
+            embedding_function=None,
             metadata={"hnsw:space": "cosine"},
         )
 
@@ -46,6 +44,7 @@ class VectorStore:
         self._collection.upsert(
             ids=[c.chunk_id for c in chunks],
             documents=[c.text for c in chunks],
+            embeddings=self._embedding.encode([c.text for c in chunks]),
             metadatas=[c.metadata() for c in chunks],
         )
         return len(chunks)
@@ -104,14 +103,33 @@ class VectorStore:
         if role not in ROLES:
             raise ValueError(f"Unknown role: {role!r}")
         k = top_k or get_settings().retrieval_top_k
-        logger.info(
-            "VectorStore.search | role=%s top_k=%d filter=%s",
-            role,
-            k,
-            {"allow_%s" % role: {"$eq": True}},
-        )
+        return self._search_one(self._embedding.encode([query], query=True), role, k)
+
+    def search_many(
+        self,
+        queries: list[str],
+        role: str,
+        *,
+        top_k: int | None = None,
+    ) -> list[list[dict]]:
+        """Role-filtered search for several queries with ONE embedding call.
+
+        Same RBAC filter as ``search``; embedding requests are batched so a
+        multi-query retrieval (original + rewrite) costs one model call instead
+        of one per query.
+        """
+        if role not in ROLES:
+            raise ValueError(f"Unknown role: {role!r}")
+        k = top_k or get_settings().retrieval_top_k
+        queries = [q for q in dict.fromkeys(queries) if q]
+        if not queries:
+            return []
+        embeddings = self._embedding.encode(queries, query=True)
+        return [self._search_one([emb], role, k) for emb in embeddings]
+
+    def _search_one(self, query_embeddings: list, role: str, k: int) -> list[dict]:
         result = self._collection.query(
-            query_texts=[query],
+            query_embeddings=query_embeddings,
             n_results=k,
             where={f"allow_{role}": {"$eq": True}},
             include=["documents", "metadatas", "distances"],

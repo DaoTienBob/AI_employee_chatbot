@@ -4,10 +4,19 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from backend.app.config import get_settings
 from backend.app.database import get_db
 from backend.app.models import User
-from backend.app.schemas import LoginRequest, TokenResponse, UserPublic
-from backend.app.security import create_access_token, get_current_user, verify_password
+from backend.app.schemas import (
+    LoginRequest,
+    TokenResponse,
+    UserPublic,
+)
+from backend.app.security import (
+    create_access_token,
+    get_current_user,
+    verify_password,
+)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -44,3 +53,22 @@ def read_current_user(
 ) -> UserPublic:
     """Return the authenticated user; the role is derived from the session."""
     return UserPublic.model_validate(current_user)
+
+
+@router.post("/refresh", response_model=TokenResponse)
+def refresh_session(
+    current_user: User = Depends(get_current_user),
+) -> TokenResponse:
+    """Issue a fresh token for the authenticated user (short-lived sessions).
+
+    Because ``get_current_user`` reloads the user from the database, a refresh
+    also re-checks ``is_active`` — deactivated accounts cannot renew sessions.
+    The client should call this before expiry instead of holding long-lived
+    tokens.
+    """
+    token, expires_in = create_access_token(current_user)
+    return TokenResponse(
+        access_token=token,
+        expires_in=expires_in,
+        user=UserPublic.model_validate(current_user),
+    )
