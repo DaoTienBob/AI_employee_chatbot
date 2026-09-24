@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import Login from "./Login";
+import { errorMessage } from "./errors";
 
 const API_BASE = "/api";
 
@@ -195,7 +196,9 @@ export default function App() {
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.detail || `Server error (${res.status})`);
+        throw new Error(
+          errorMessage(data, res.status, `Server error (${res.status})`),
+        );
       }
 
       const data = await res.json();

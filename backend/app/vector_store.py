@@ -50,9 +50,22 @@ class VectorStore:
         return len(chunks)
 
     def delete_document_chunks(self, document_id: str) -> int:
-        """Remove every indexed chunk belonging to a document (T11/FR08)."""
+        """Remove every indexed chunk belonging to a document (T11/FR08).
+
+        Returns the number of removed chunks. ChromaDB releases disagree on the
+        shape of ``delete``'s result (a ``{"deleted": n}`` mapping in 1.x, a
+        list of ids or ``None`` in other versions), so the count is normalized.
+        For clients without a count, use the before/after document counts;
+        that fallback assumes no concurrent writes to the same document.
+        """
+        before = self.count_for_document(document_id)
         result = self._collection.delete(where={"document_id": {"$eq": document_id}})
-        deleted = len(result) if isinstance(result, list) else 0
+        if isinstance(result, dict):
+            deleted = int(result.get("deleted") or 0)
+        elif isinstance(result, list):
+            deleted = len(result)
+        else:
+            deleted = max(0, before - self.count_for_document(document_id))
         if deleted:
             logger.info("Removed %d indexed chunks for %s", deleted, document_id)
         return deleted

@@ -8,7 +8,6 @@ conversation, even by guessing its integer ID (T18).
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import func, select
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { errorMessage } from "./errors";
 
 const API_BASE = "/api";
 
@@ -24,7 +25,9 @@ export default function Login({ onLogin }) {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.detail || `Login failed (${res.status})`);
+        throw new Error(
+          errorMessage(data, res.status, `Login failed (${res.status})`),
+        );
       }
       const data = await res.json();
       onLogin(data.access_token, data.user);

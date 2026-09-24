@@ -7,6 +7,9 @@ _TMP_DATA = tempfile.mkdtemp(prefix="chatbot_phase2_tests_")
 os.environ["DATABASE_URL"] = f"sqlite:///{_TMP_DATA}/test.db"
 os.environ["CHROMA_DIR"] = f"{_TMP_DATA}/chroma"
 os.environ["UPLOAD_DIR"] = f"{_TMP_DATA}/uploads"
+# Importing backend.app.rag calls setup_logging(); without this the test run
+# appends to the developer's real data/logs/rag.log.
+os.environ["LOG_DIR"] = f"{_TMP_DATA}/logs"
 
 # Tests use the small cached model regardless of the developer model selection.
 os.environ["EMBEDDING_PROVIDER"] = "minilm"

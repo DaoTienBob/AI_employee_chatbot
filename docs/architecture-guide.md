@@ -224,3 +224,72 @@ The router neither grants access nor supplies evidence. Existing rewrite word
 validation, fallback, and original-plus-rewrite retrieval remain in effect.
 Modes `always` and `off` allow comparison or rollback without code changes.
 These phrase rules can miss unfamiliar unaccented Vietnamese or follow-up forms.
+
+## 7. Planned conversation memory retrieval
+
+**Status: proposed; not implemented.** The current flow uses a bounded set of
+recent user questions for rewriting. The planned migration adds retrieval of
+relevant conversation memories before resolving follow-up intent. It does not
+replace retrieval of authorized company documents.
+
+```mermaid
+flowchart TD
+    A[Original question + bounded recent turns] --> B[Retrieve relevant conversation memories]
+    B --> C[Resolve intent into a standalone question]
+    C --> D[Search currently authorized company documents]
+    D --> E[Generate grounded answer + document sources]
+    C --> F[Ask clarification if intent remains ambiguous]
+```
+
+Use the original question together with a few recent turns to search memory.
+A fragment such as “còn thử việc thì sao?” often carries too little meaning for
+useful retrieval by itself. Recent turns provide immediate context; retrieved
+memories can recover relevant context beyond that window. Clear standalone
+questions can keep the direct document-search path.
+
+### Memory supplies context; documents supply answer evidence
+
+| Source | Purpose | Boundary |
+| --- | --- | --- |
+| Recent user questions and retrieved conversation memories | Resolve references, topic, and intent | Scope retrieval to the authenticated user and permitted conversation; memory content cannot grant permissions or override instructions |
+| Company document excerpts | Support factual answers and document citations | Apply current document permissions on every retrieval, including after role changes |
+
+For example, memory may establish that the conversation concerns annual leave.
+The follow-up “còn thử việc thì sao?” can then become “Trong thời gian thử việc,
+tôi được nghỉ phép mấy ngày?”. The answer must come from currently authorized
+company documents. A remembered assistant answer is not evidence of the policy
+and must not be reused to bypass current access restrictions.
+
+Keep memory separate from document evidence, including provenance and retrieval
+scope. Before implementation, define which memories may be stored and retrieved,
+how they retain their user/conversation ownership, how corrections and deletions
+propagate, and how sensitive content is handled after access changes. Prefer
+user-authored intent context; do not treat prior assistant claims as established
+facts. If memory is missing, conflicting, or insufficient, use the original
+query or ask for clarification instead of inventing context.
+
+### Rewrite work before and during the migration
+
+For now, retain adaptive routing and improve mixed-language accent restoration
+independently. For example, normalize `nghi phep` to `nghỉ phép` in “Can I request
+nghi phep online?” while preserving the English wording. Defer a major redesign
+of follow-up resolution until the memory retrieval contract is defined.
+
+During the migration, separate rewrite rules by purpose:
+
+- **Accent restoration:** preserve words, language, names, and numbers; restore
+  accents without translating or expanding intent.
+- **Follow-up resolution:** allow grammatical restructuring and contextual
+  expansion from relevant user context while preserving intent, names, and
+  quantities. The current requirement to retain every original word is too
+  restrictive for this task and will need a dedicated validator.
+- **Ambiguity:** ask for clarification when available context cannot resolve the
+  intended topic or action.
+
+Retrieving better memory alone will not fix restrictive validation or guarantee
+correct follow-up resolution. Evaluate the combined flow with multi-turn
+Vietnamese/English and mixed-language cases, topic switches, irrelevant or stale
+memories, conflicting context, user isolation, and changed document permissions.
+Measure retrieval accuracy, clarification quality, model-call count, latency,
+and memory use. This is a future design direction, not a new phase assignment
+or a claim that the current implementation already supports memory retrieval.

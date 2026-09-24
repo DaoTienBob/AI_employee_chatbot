@@ -62,3 +62,40 @@ def test_startup_does_not_hide_store_failure(monkeypatch):
     monkeypatch.setattr(main, 'get_vector_store', Mock(side_effect=RuntimeError('offline')))
     with pytest.raises(RuntimeError, match='offline'):
         main._check_index_permissions(Mock())
+
+
+def test_delete_document_chunks_reports_removed_count():
+    """ChromaDB 1.x returns ``{"deleted": n}``, not a list of ids.
+
+    Regression: the wrapper counted a non-list result as zero, so the removal
+    was reported (and logged) as "nothing deleted" even on success.
+    """
+    from backend.app.chunking import chunk_document
+    from backend.app.vector_store import get_vector_store
+
+    store = get_vector_store()
+    document_id = 'DOC_AUDIT_DELETE'
+    chunks = chunk_document(
+        [('Leave', 'Employees receive twelve days of annual leave per year.')],
+        document_id=document_id,
+        document_name='audit.docx',
+        allowed_roles=['hr'],
+    )
+    assert store.index_chunks(chunks) == len(chunks)
+    assert store.count_for_document(document_id) == len(chunks)
+
+    removed = store.delete_document_chunks(document_id)
+
+    assert removed == len(chunks)
+    assert store.count_for_document(document_id) == 0
+
+
+@pytest.mark.parametrize('result', [None, ['chunk-a', 'chunk-b'], {'deleted': 2}])
+def test_delete_counts_across_client_result_shapes(result):
+    from backend.app.vector_store import VectorStore
+    store = VectorStore.__new__(VectorStore)
+    store._collection = Mock()
+    store._collection.delete.return_value = result
+    store._collection.get.side_effect = [{'ids': ['chunk-a', 'chunk-b']}, {'ids': []}]
+    assert store.delete_document_chunks('DOC_COUNT') == 2
+    store._collection.delete.assert_called_once_with(where={'document_id': {'$eq': 'DOC_COUNT'}})
