@@ -205,7 +205,7 @@ while PDFs need proper Unicode font maps or extraction fails.
 
 ## Configurable embeddings
 
-The selected provider is Ollama with `bge-m3` (see `.env.example`).
+The selected provider is Ollama with `nomic-embed-text-v2-moe` (see `.env.example`).
 Embedding configuration is separate from the answer-generation LLM. To try E5:
 
 ```dotenv
@@ -222,13 +222,13 @@ Local tokenizers split oversized document chunks and reject oversized queries
 instead of silently truncating them. The chunk-size setting remains a word
 window target; actual chunks can be smaller to fit the model context.
 
-To use Ollama embeddings instead (after `ollama pull bge-m3`):
+To use Ollama embeddings instead (after `ollama pull nomic-embed-text-v2-moe`):
 
 ```dotenv
 EMBEDDING_PROVIDER=ollama
-EMBEDDING_MODEL=bge-m3
-EMBEDDING_QUERY_PREFIX=""
-EMBEDDING_DOCUMENT_PREFIX=""
+EMBEDDING_MODEL=nomic-embed-text-v2-moe
+EMBEDDING_QUERY_PREFIX="search_query: "
+EMBEDDING_DOCUMENT_PREFIX="search_document: "
 EMBEDDING_TIMEOUT_SECONDS=120
 ```
 
@@ -282,11 +282,33 @@ The original question remains the final answer request and is saved unchanged.
 
 ```dotenv
 QUERY_REWRITE_ENABLED=true
+QUERY_REWRITE_MODE=adaptive
+LLM_PROVIDER=ollama
+LLM_MODEL=qwen3.5:latest
+QUERY_REWRITE_PROVIDER=inherit
 QUERY_REWRITE_MODEL=
-QUERY_REWRITE_TIMEOUT_SECONDS=15
+QUERY_REWRITE_TIMEOUT_SECONDS=60
 ```
 
-The rewrite uses `LLM_PROVIDER`; a blank rewrite model uses `LLM_MODEL`.
+`QUERY_REWRITE_MODE` supports `always`, `adaptive`, and `off`. The example
+configuration uses `adaptive`: local phrase rules route likely unaccented or
+partially accented Vietnamese, ambiguous Vietnamese leave requests, and likely
+follow-ups to Qwen. Other questions search directly. ASCII text alone is not a
+Vietnamese signal. Short questions with prior user history are conservatively
+rewritten. These rules are heuristics, not comprehensive language detection;
+use `always` if your queries frequently fall outside their vocabulary.
+`QUERY_REWRITE_ENABLED=false` overrides every mode. The code default remains
+`always` for configurations that omit the new setting.
+
+Both stages use the same local Qwen model: `inherit` uses `LLM_PROVIDER`, and
+an empty `QUERY_REWRITE_MODEL` uses `LLM_MODEL`. Rewriting and answering make
+separate requests with different prompts; they share the same model weights in
+Ollama. Nomic embeddings still require a separate model. Actual memory use also
+depends on context size and concurrent requests. The 60-second rewrite timeout
+allows more time for local model loading; failures still use the original query.
+To use an external rewrite provider later, override the provider/model and set
+its corresponding API key. Only the question and recent user questions go to
+rewriting, not document excerpts.
 Changes require restarting the backend. Set the flag to false to search the
 original query without rewriting. Timeout, unavailable model, or malformed JSON
 falls back to the original query. Valid ambiguity output asks a clarification
@@ -294,7 +316,7 @@ question (`fallback=true`, no sources), without retrieval or answer generation.
 This relies on the model detecting ambiguity; it is not a guaranteed classifier.
 
 Each search uses the same authenticated role. Results are deduplicated by chunk
-ID and combined with reciprocal-rank fusion, capped at `RETRIEVAL_TOP_K`.
+ID and combined with reciprocal-rank fusion, retaining the union (at most `2 * RETRIEVAL_TOP_K`).
 No extra reranker model is introduced. Rewrites never become source evidence.
 
 Measure current-index retrieval and latency (requires Ollama/demo documents):

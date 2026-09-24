@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 
 
 def _check_index_permissions(db) -> None:
-    """Warn when ChromaDB chunk permissions drift from SQLite (RBAC).
+    """Refuse startup when indexed chunk permissions drift from SQLite (RBAC).
 
     A crash between the SQL commit and an index restore could leave stale
     allow_* flags in the vector store. Retrieval still uses the chunk metadata,
@@ -41,32 +41,22 @@ def _check_index_permissions(db) -> None:
     """
     if not settings.verify_index_on_startup:
         return
-    try:
-        store = get_vector_store()
-    except Exception:
-        logger.warning("Index permission check skipped: vector store unavailable")
-        return
-    documents_ = db.scalars(
-        select(Document).where(Document.is_active.is_(True))
-    ).all()
-    for document in documents_:
-        doc_key = f"DOC_{document.id:03d}"
-        chunks = store._collection.get(  # noqa: SLF001 — internal health check
-            where={"document_id": {"$eq": doc_key}}, include=["metadatas"], limit=5
-        )
-        for meta in chunks.get("metadatas") or []:
-            for role in ROLES:
-                indexed = bool(meta.get(f"allow_{role}"))
-                recorded = getattr(document, f"allowed_{role}")
-                if indexed != recorded:
-                    logger.error(
-                        "RBAC drift for %s (%s): SQLite grants %s=%s but "
-                        "indexed chunk %s has %s. Re-upload this document "
-                        "to repair index permissions.",
-                        doc_key, document.document_name, role, recorded,
-                        meta.get("chunk_id", "?"), indexed,
-                    )
-                    break
+    store = get_vector_store()
+    records = {f"DOC_{d.id:03d}": d for d in db.scalars(select(Document)).all()}
+    offset = 0
+    while True:
+        batch = store._collection.get(include=["metadatas"], limit=500, offset=offset)
+        metadata = batch.get("metadatas") or []
+        for meta in metadata:
+            document = records.get(meta.get("document_id"))
+            if document is None or not document.is_active or any(
+                meta.get(f"allow_{role}") != getattr(document, f"allowed_{role}")
+                for role in ROLES
+            ):
+                raise RuntimeError("Index permission drift detected; repair the index before serving requests")
+        if len(metadata) < 500:
+            break
+        offset += len(metadata)
 
 
 @contextlib.asynccontextmanager
@@ -76,10 +66,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     init_db()
     with SessionLocal() as db:
         seed_demo_users(db)
-        try:
-            _check_index_permissions(db)
-        except Exception:
-            logger.exception("Startup index permission check failed")
+        _check_index_permissions(db)
     yield
 
 

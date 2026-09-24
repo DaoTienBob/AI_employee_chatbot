@@ -128,10 +128,22 @@ class VectorStore:
         return [self._search_one([emb], role, k) for emb in embeddings]
 
     def _search_one(self, query_embeddings: list, role: str, k: int) -> list[dict]:
+        # SQLite is authoritative even if index permissions drift after startup.
+        from sqlalchemy import select
+        from backend.app.database import SessionLocal
+        from backend.app.models import Document
+        with SessionLocal() as db:
+            allowed = [f"DOC_{id:03d}" for id in db.scalars(
+                select(Document.id).where(Document.is_active.is_(True),
+                                          getattr(Document, f"allowed_{role}").is_(True))
+            )]
+        if not allowed:
+            return []
         result = self._collection.query(
             query_embeddings=query_embeddings,
             n_results=k,
-            where={f"allow_{role}": {"$eq": True}},
+            where={"$and": [{f"allow_{role}": {"$eq": True}},
+                            {"document_id": {"$in": allowed}}]},
             include=["documents", "metadatas", "distances"],
         )
         hits: list[dict] = []

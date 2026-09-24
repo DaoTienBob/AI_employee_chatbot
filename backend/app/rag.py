@@ -22,6 +22,7 @@ Security invariants (roadmap §3.3):
 from __future__ import annotations
 
 import logging
+import re
 from typing import TYPE_CHECKING
 
 from sqlalchemy import select
@@ -98,11 +99,20 @@ def _is_refusal(answer: str) -> bool:
     """Heuristic: did the model decline for lack of evidence?
 
     Only flags refusals — a genuine answer rarely contains several of these
-    phrases, and false positives would merely convert a hedged answer into a
-    standard fallback message, which is still safe.
+    phrases, and false positives mark a hedged answer as fallback and remove its sources.
+    This heuristic does not validate factual grounding.
     """
     lowered = answer.lower()
-    return sum(marker in lowered for marker in _REFUSAL_MARKERS) >= 2
+    # Explicit first-person refusals need only one phrase. Bare negations in
+    # an otherwise useful answer ("overtime is not mentioned") are insufficient.
+    explicit = (
+        r"\b(?:i|we)\s+(?:could(?:n.t| not) find|(?:do not|don.t) have|cannot|can.t|am unable|are unable)",
+        r"\b(?:i|we)\s+have\s+(?:insufficient|no|not enough)\s+information",
+        r"\b(?:tôi|chúng tôi)\s+(?:không thể (?:trả lời|tìm thấy)|không đủ thông tin|không có (?:đủ )?thông tin|không tìm thấy)",
+    )
+    return any(re.search(pattern, lowered) for pattern in explicit) or sum(
+        marker in lowered for marker in _REFUSAL_MARKERS
+    ) >= 2
 
 
 # ---------------------------------------------------------------------------
@@ -366,10 +376,10 @@ def answer_question(
     _persist_messages(conv.id, question, answer, db)
 
     # ------------------------------------------------------------------
-    # 9. Build source references (T15) — capped to the strongest chunks
-    #    actually supplied to the prompt.
+    # 9. Return references for all excerpts supplied to the prompt.
+    #    These are context references, not model-verified attribution.
     # ------------------------------------------------------------------
-    sources = _build_sources(useful_hits[:3])
+    sources = _build_sources(useful_hits)
 
     return ChatResponse(
         answer=answer,

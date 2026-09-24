@@ -36,7 +36,7 @@ def main():
                          rewritten_rank=rank(hits), original_seconds=round(original_seconds, 3),
                          rewritten_seconds=round(time.monotonic()-started, 3)))
     print(json.dumps({'original_top5': sum(r['original_rank'] is not None for r in rows),
-                      'rewritten_top5': sum(r['rewritten_rank'] is not None for r in rows),
+                      'rewritten_top5': sum(r['rewritten_rank'] is not None and r['rewritten_rank'] <= 5 for r in rows),
                       'total': len(rows), 'details': rows}, ensure_ascii=False, indent=2))
 
 

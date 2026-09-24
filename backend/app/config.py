@@ -63,8 +63,10 @@ class Settings(BaseSettings):
     embedding_cache_dir: str = str(DATA_DIR / "models")
     embedding_timeout_seconds: float = 120.0
 
-    # --- Query rewriting (T14/T16/T18); uses LLM_PROVIDER ---
+    # --- Query rewriting (T14/T16/T18); independent provider ---
+    query_rewrite_provider: Literal["inherit", "ollama", "openai", "gemini", "mock"] = "inherit"
     query_rewrite_enabled: bool = True
+    query_rewrite_mode: Literal["always", "adaptive", "off"] = "always"
     query_rewrite_model: str = ""  # blank uses LLM_MODEL
     query_rewrite_timeout_seconds: float = Field(default=15.0, gt=0)
 
@@ -85,6 +87,8 @@ class Settings(BaseSettings):
     llm_provider: str = "ollama"
     ollama_base_url: str = "http://localhost:11434"
     llm_model: str = "llama3.2"
+    gemini_api_key: str = ""
+    gemini_base_url: str = "https://generativelanguage.googleapis.com/v1beta"
     openai_api_key: str = ""
     openai_base_url: str = "https://api.openai.com/v1"
 

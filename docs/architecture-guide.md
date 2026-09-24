@@ -23,16 +23,16 @@ employee is allowed to see**. That sentence contains the three core ideas:
 User question
      │
      ▼
-[1] Query rewriting ──── qwen3.5 (local Ollama, JSON mode)
+[1] Adaptive routing ─── direct retrieval or qwen3.5:latest rewrite (JSON)
      │                     fixes missing Vietnamese accents,
      │                     resolves follow-ups ("còn OT thì sao?")
      ▼
-[2] Retrieval ─────────── ChromaDB + bge-m3 embeddings
+[2] Retrieval ─────────── ChromaDB + nomic-embed-text-v2-moe embeddings
      │                     WHERE allow_<role> = true  ← the RBAC filter
      ▼
 [3] Fallback check ────── weak evidence? → safe "I don't know" reply
      ▼
-[4] LLM answer ────────── llama3.2, grounded on the excerpts
+[4] LLM answer ────────── qwen3.5:latest, grounded on the excerpts
      ▼
 [5] Sources + history ─── saved to SQLite, returned to the frontend
 ```
@@ -45,14 +45,14 @@ Vietnamese users often type without diacritics:
 `toi duoc nghi phep bao nhieu ngay` ("how many leave days do I get?").
 Embedding models match this poorly against properly accented documents.
 
-So before retrieval, a **small dedicated LLM** (qwen3.5) rewrites the question:
+So before retrieval, a **separate rewrite call** (the same local Qwen model used for answers) rewrites the question:
 
 - restores accents: → `Tôi được nghỉ phép bao nhiêu ngày mỗi năm?`
 - turns follow-ups into standalone questions using *previous user questions only*
 - may instead return a **clarification** (e.g. bare "tôi muốn xin nghi" could
   mean annual leave *or* resignation — the bot asks which)
 
-Key safety rules baked into the rewriter:
+Key safety rules are described alongside RBAC below.
 
 
 ---
@@ -73,6 +73,9 @@ self._collection.query(
     ...
 )
 ```
+
+Retrieval additionally filters document IDs against current active SQLite grants,
+so stale permissive vector flags do not override revoked access.
 
 Every indexed chunk carries `allow_employee / allow_hr / allow_manager` flags
 copied from its parent document. ChromaDB applies this filter *before* ranking,
@@ -99,11 +102,17 @@ Two more layers:
 - Only **user** questions from history are visible to it. Assistant answers are
   excluded — they could contain evidence the user's role shouldn't see.
 - The rewriter's output is **untrusted data**, validated with a strict Pydantic
-  schema (`extra='forbid'`). Anything malformed → fall back to the original
-  question. A broken rewrite can never break the app.
+  schema (`extra='forbid'`). Standalone rewrites must preserve the words and
+  numbers after accent removal; follow-ups may only add words from earlier
+  user questions. Invalid output falls back to the original query. These
+  checks limit drift but cannot prove that every accent choice preserves meaning.
+  The quantity phrase "ở nhà mấy ngày" has an explicit homophone correction.
+  Clarification is reserved for short fragments or ambiguous "nghi" questions;
+  unnecessary clarification on concrete questions falls back to original search.
 - We search **both** the original and rewritten question, then merge results
-  with Reciprocal Rank Fusion (RRF) — so a bad rewrite can only add noise,
-  never delete the original's results.
+  with Reciprocal Rank Fusion (RRF). The full deduplicated union is retained
+  (at most twice `RETRIEVAL_TOP_K`); fusion changes ordering without evicting
+  original candidates. The evidence threshold can still remove weak hits.
 
 > **Intern takeaway:** never trust an LLM's output as data. Validate it, and
 > design so the failure mode is "fall back to the safe path."
@@ -141,25 +150,27 @@ information…" — but the API still reported `fallback: false` and attached 5
 sources, so the frontend couldn't tell an answer from a polite failure.
 
 **Fix:** a lightweight heuristic (`_is_refusal` in `rag.py`) counts "no
-evidence" phrases (Vietnamese + English); ≥2 markers → report
+evidence" phrases (Vietnamese + English); one explicit first-person refusal or ≥2 other markers → report
 `fallback: true`, strip sources. The refusal text itself is kept — it's more
 informative than a canned message.
 
 > **Lesson:** the *shape* of your API response must reflect the *meaning* of
 > the content, or the UI will lie to users.
 
-### 4.3 Sources = what was used, not what was fetched
+### 4.3 Sources identify all excerpts supplied to the model
 
-Sources are capped to the top 3 chunks supplied to the prompt. Listing all 5
-retrieved chunks on a refusal (or on an answer that used one chunk) erodes
-trust in citations.
+Every excerpt supplied to the answer model has a returned source reference.
+Refusals have no sources. These are context references, not a claim that the
+model used every excerpt or proof that every answer statement is supported.
+Validated per-claim attribution would require a separate implementation.
 
-### 4.4 No hallucinated facts — by design, with a backstop
+### 4.4 Grounding instructions and fallback checks have limits
 
 The grounding prompt says: use ONLY the excerpts, don't infer beyond them.
 The distance-threshold fallback catches "no relevant evidence at all" cases,
 and the refusal detector catches "evidence existed but didn't answer the
-question" cases. Two different failure modes, two different guards.
+question" cases. Two different failure modes, two different guards. Neither is a guarantee
+against hallucination; evaluate factual support on real questions.
 
 ---
 
@@ -169,7 +180,7 @@ question" cases. Two different failure modes, two different guards.
 |---|---|---|
 | SQLite busy timeout (30s) | `database.py` | concurrent writes (chat + admin upload) wait instead of 500-ing |
 | Upload size caps | `routers/documents.py` | declared-size check + hard cap on bytes actually read — no memory exhaustion |
-| Startup index check | `main.py` | compares ChromaDB permission flags vs SQLite; a crash mid-replacement can't silently change who can see a document |
+| Startup index check | `main.py` | checks every indexed chunk, including orphans/inactive documents; mismatches or store failures block startup when verification is enabled |
 | Demo users only in debug | `seed.py` | known-password admin accounts must never exist in a real deployment |
 | Short tokens + `/auth/refresh` | `security.py`, `routers/auth.py` | a stolen token is worthless after 60 minutes |
 
@@ -178,7 +189,7 @@ question" cases. Two different failure modes, two different guards.
 ## 6. How to verify changes yourself
 
 ```bash
-.venv/bin/python -m pytest backend/tests -q                    # 54 tests
+DEBUG=true .venv/bin/python -m pytest backend/tests -q                    # includes audit regression tests
 .venv/bin/python backend/scripts/benchmark_embeddings.py       # retrieval quality
 .venv/bin/python backend/scripts/benchmark_query_rewriting.py  # rewriting quality
 ```
@@ -194,3 +205,22 @@ accounts, then ask:
 
 If any of those four misbehave, you have found a real bug — not a flake.
 
+
+Rewrite provider/model are configured with `QUERY_REWRITE_PROVIDER` and
+`QUERY_REWRITE_MODEL`. The current configuration uses `inherit` and an empty
+rewrite model, so both stages share `LLM_MODEL=qwen3.5:latest` through Ollama.
+This avoids keeping distinct rewrite and answer model weights loaded; Nomic
+still runs separately for embeddings. Only the question and recent user-question
+context are sent for rewriting; retrieved documents are not included.
+
+### Adaptive rewrite routing
+
+`QUERY_REWRITE_MODE=adaptive` adds a deterministic decision before the existing
+rewrite call. Likely unaccented Vietnamese phrases, ambiguous leave requests,
+and context-dependent follow-ups use Qwen. Other queries search directly.
+History signals use only user messages. Short queries with user history take
+the conservative rewrite path; an unrelated long standalone question can skip it.
+The router neither grants access nor supplies evidence. Existing rewrite word
+validation, fallback, and original-plus-rewrite retrieval remain in effect.
+Modes `always` and `off` allow comparison or rollback without code changes.
+These phrase rules can miss unfamiliar unaccented Vietnamese or follow-up forms.

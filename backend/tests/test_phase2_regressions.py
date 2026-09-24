@@ -289,3 +289,20 @@ def test_answer_question_creates_single_conversation():
         # Exactly ONE new conversation must be created
         assert conv_count_after == conv_count_before + 1
 
+
+
+def test_retrieval_blocks_permissions_revoked_in_sqlite(client):
+    """A stale permissive vector flag must not override current SQL permissions."""
+    from backend.app.database import SessionLocal
+    from backend.app.models import Document
+    headers = login(client, 'admin')
+    doc_id = upload(client, headers, text='Revoked unique employee content.', roles='employee')
+    store = get_vector_store()
+    key = f'DOC_{doc_id:03d}'
+    assert store.get_document_chunks(key)['metadatas'][0]['allow_employee']
+    with SessionLocal() as db:
+        document = db.get(Document, doc_id)
+        document.allowed_employee = False
+        db.commit()
+    hits = store.search('Revoked unique employee content.', 'employee')
+    assert all(h['metadata']['document_id'] != key for h in hits)

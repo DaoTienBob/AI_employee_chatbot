@@ -93,7 +93,7 @@ class OpenAIClient(LLMClient):
     ``OPENAI_BASE_URL`` in ``.env``.
     """
 
-    def __init__(self, *, model: str | None = None, timeout: float = 120.0) -> None:
+    def __init__(self, *, model: str | None = None, timeout: float = 120.0, response_schema: dict | None = None) -> None:
         import httpx  # noqa: PLC0415
 
         settings = get_settings()
@@ -104,6 +104,7 @@ class OpenAIClient(LLMClient):
         self._base_url = settings.openai_base_url.rstrip("/")
         self._api_key = settings.openai_api_key
         self._model = model or settings.llm_model
+        self._response_schema = response_schema
         self._client = httpx.Client(
             base_url=self._base_url,
             headers={
@@ -121,6 +122,13 @@ class OpenAIClient(LLMClient):
             "messages": messages,
             "temperature": temperature,
         }
+        if self._response_schema is not None:
+            payload["response_format"] = {
+                "type": "json_schema",
+                "json_schema": {"name": "query_rewrite", "strict": True,
+                                "schema": self._response_schema},
+            }
+            payload["store"] = False
         try:
             resp = self._client.post(
                 "/chat/completions",
@@ -148,6 +156,63 @@ class OpenAIClient(LLMClient):
 # ---------------------------------------------------------------------------
 # Mock / offline backend for testing
 # ---------------------------------------------------------------------------
+
+
+class GeminiClient(LLMClient):
+    """Gemini GenerateContent client used for structured query rewriting."""
+
+    def __init__(self, *, model: str | None = None, timeout: float = 120.0,
+                 response_schema: dict | None = None) -> None:
+        import httpx
+
+        settings = get_settings()
+        if not settings.gemini_api_key:
+            raise LLMError("GEMINI_API_KEY is not set. Add it to .env.")
+        self._model = model or settings.llm_model
+        self._response_schema = response_schema
+        self._client = httpx.Client(
+            base_url=settings.gemini_base_url.rstrip("/"),
+            headers={"x-goog-api-key": settings.gemini_api_key},
+            timeout=timeout,
+        )
+
+    def complete(self, messages: list[dict], *, temperature: float = 0.2) -> str:
+        import httpx
+
+        payload = {
+            "contents": [
+                {"role": "model" if m["role"] == "assistant" else "user",
+                 "parts": [{"text": m["content"]}]}
+                for m in messages if m["role"] != "system"
+            ],
+            "generationConfig": {"temperature": temperature},
+        }
+        system = [ {"text": m["content"]} for m in messages if m["role"] == "system" ]
+        if system:
+            payload["systemInstruction"] = {"parts": system}
+        if self._response_schema is not None:
+            payload["generationConfig"].update(
+                responseMimeType="application/json", responseJsonSchema=self._response_schema,
+            )
+        try:
+            response = self._client.post(f"/models/{self._model}:generateContent", json=payload)
+            response.raise_for_status()
+            candidate = response.json()["candidates"][0]
+            if candidate.get("finishReason") != "STOP":
+                raise LLMError("Gemini did not finish the response")
+            result = "".join(part.get("text", "") for part in candidate["content"]["parts"]
+                             if not part.get("thought")).strip()
+            if not result:
+                raise LLMError("Gemini returned no text")
+            return result
+        except LLMError:
+            raise
+        except httpx.HTTPStatusError as exc:
+            raise LLMError(f"Gemini returned HTTP {exc.response.status_code}") from exc
+        except httpx.TimeoutException as exc:
+            raise LLMError("Gemini request timed out") from exc
+        except Exception as exc:
+            raise LLMError("Gemini request failed or returned an invalid response") from exc
 
 
 class MockClient(LLMClient):
@@ -203,4 +268,3 @@ def get_llm_client() -> LLMClient:
             settings.llm_model,
         )
     return _singleton
-

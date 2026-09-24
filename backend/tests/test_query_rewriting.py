@@ -95,14 +95,14 @@ def test_refusal_reported_as_fallback_without_sources(monkeypatch):
     assert 'niche policy?' in result.answer or 'không' in result.answer.lower()
 
 
-def test_refusal_threshold_requires_two_markers():
+def test_hedged_answer_without_explicit_refusal_stays_answer():
     from backend.app import rag
     assert rag._is_refusal('Không có thông tin về việc này. Không thể trả lời lúc này.') is True
     # A genuine answer quoting one negation stays a normal answer.
     assert rag._is_refusal('Nhân viên được nghỉ 12 ngày; overtime không được đề cập ở đây.') is False
 
 
-def test_sources_capped_at_three(monkeypatch):
+def test_sources_cover_all_prompt_excerpts(monkeypatch):
     from backend.app import rag
     monkeypatch.setattr(rag, '_get_or_create_conversation', lambda *args: SimpleNamespace(id=1))
     monkeypatch.setattr(rag, '_load_history', lambda *args: [])
@@ -118,7 +118,7 @@ def test_sources_capped_at_three(monkeypatch):
     monkeypatch.setattr(rag, 'get_llm_client', lambda: llm)
     monkeypatch.setattr(rag, '_persist_messages', Mock())
     result = rag.answer_question('question?', SimpleNamespace(id=1, role='employee'), Mock())
-    assert [s.document_name for s in result.sources] == ['doc-a', 'doc-b', 'doc-c']
+    assert [s.document_name for s in result.sources] == ['doc-a', 'doc-b', 'doc-c', 'doc-d', 'doc-e']
 
 
 def test_rag_does_not_replay_old_assistant_answer(monkeypatch):
@@ -160,3 +160,16 @@ def test_clarification_skips_retrieval_and_answer_generation(monkeypatch):
     assert result.sources == [] and result.fallback
     store.assert_not_called()
     llm.assert_not_called()
+
+
+def test_unnecessary_clarification_keeps_concrete_question(client):
+    client.complete.return_value = '{"query":"","clarification":"Do you mean company policy?"}'
+    question = 'How many annual leave days do I get?'
+    result = rewriting.rewrite_query(question, [])
+    assert result.query == question and not result.clarification
+
+
+def test_quantity_homophone_is_repaired_without_new_words(client):
+    client.complete.return_value = json.dumps({'query': 'Mỗi tuần được làm việc ở nhà máy bao nhiêu ngày?', 'clarification': ''})
+    result = rewriting.rewrite_query('Moi tuan duoc lam viec o nha may ngay?', [])
+    assert result.query == 'Mỗi tuần được làm việc ở nhà mấy ngày?'

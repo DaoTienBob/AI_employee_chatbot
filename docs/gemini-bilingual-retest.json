@@ -1,0 +1,557 @@
+{
+  "retrieval": [
+    {
+      "language": "vi",
+      "topic": "Nghỉ phép",
+      "query": "Tôi được nghỉ phép bao nhiêu ngày mỗi năm?",
+      "rewrite": "Tôi được nghỉ phép bao nhiêu ngày mỗi năm?",
+      "clarification": "",
+      "rank": 1,
+      "seconds": 3.23
+    },
+    {
+      "language": "vi",
+      "topic": "WFH",
+      "query": "Mỗi tuần được làm việc ở nhà mấy ngày?",
+      "rewrite": "Mỗi tuần được làm việc ở nhà mấy ngày?",
+      "clarification": "",
+      "rank": 1,
+      "seconds": 2.45
+    },
+    {
+      "language": "vi",
+      "topic": "OT",
+      "query": "Làm thêm vào ngày lễ được trả bao nhiêu?",
+      "rewrite": "Làm thêm vào ngày lễ được trả bao nhiêu?",
+      "clarification": "",
+      "rank": 1,
+      "seconds": 2.75
+    },
+    {
+      "language": "vi",
+      "topic": "Chấm công",
+      "query": "Khi nào bảng công hàng tháng bị khóa?",
+      "rewrite": "Khi nào bảng công hàng tháng bị khóa?",
+      "clarification": "",
+      "rank": 1,
+      "seconds": 2.3
+    },
+    {
+      "language": "vi",
+      "topic": "Quy định thử việc",
+      "query": "Thời gian thử việc kéo dài bao lâu?",
+      "rewrite": "Thời gian thử việc kéo dài bao lâu?",
+      "clarification": "",
+      "rank": 1,
+      "seconds": 2.27
+    },
+    {
+      "language": "vi",
+      "topic": "Quy trình nghỉ việc",
+      "query": "Muốn thôi việc thì phải báo trước bao lâu?",
+      "rewrite": "Muốn thôi việc thì phải báo trước bao lâu?",
+      "clarification": "",
+      "rank": 1,
+      "seconds": 3.0
+    },
+    {
+      "language": "vi",
+      "topic": "Quy trình thanh toán",
+      "query": "Kế toán thanh toán vào thứ mấy?",
+      "rewrite": "Kế toán thanh toán vào thứ mấy?",
+      "clarification": "",
+      "rank": 1,
+      "seconds": 0.31
+    },
+    {
+      "language": "vi",
+      "topic": "Công tác phí",
+      "query": "Đi công tác về thì hạn nộp hóa đơn hoàn tiền là bao lâu?",
+      "rewrite": "Đi công tác về thì hạn nộp hóa đơn hoàn tiền là bao lâu?",
+      "clarification": "",
+      "rank": 1,
+      "seconds": 0.27
+    },
+    {
+      "language": "vi",
+      "topic": "Đặt phòng họp",
+      "query": "Tôi muốn đặt phòng để họp nhóm thì làm thế nào?",
+      "rewrite": "Tôi muốn đặt phòng để họp nhóm thì làm thế nào?",
+      "clarification": "",
+      "rank": 1,
+      "seconds": 0.26
+    },
+    {
+      "language": "vi",
+      "topic": "Mượn thiết bị",
+      "query": "Tôi cần mượn máy chiếu thì liên hệ ai?",
+      "rewrite": "Tôi cần mượn máy chiếu thì liên hệ ai?",
+      "clarification": "",
+      "rank": 1,
+      "seconds": 0.31
+    },
+    {
+      "language": "vi",
+      "topic": "Thưởng",
+      "query": "Lương tháng thứ mười ba được trả khi nào?",
+      "rewrite": "Lương tháng thứ mười ba được trả khi nào?",
+      "clarification": "",
+      "rank": 1,
+      "seconds": 0.3
+    },
+    {
+      "language": "vi",
+      "topic": "Bảo hiểm",
+      "query": "Người phụ thuộc có được đăng ký bảo hiểm sức khỏe không?",
+      "rewrite": "Người phụ thuộc có được đăng ký bảo hiểm sức khỏe không?",
+      "clarification": "",
+      "rank": 1,
+      "seconds": 0.35
+    },
+    {
+      "language": "en",
+      "topic": "Nghỉ phép",
+      "query": "How many annual leave days do I get?",
+      "rewrite": "How many annual leave days do I get?",
+      "clarification": "",
+      "rank": 1,
+      "seconds": 0.29
+    },
+    {
+      "language": "en",
+      "topic": "WFH",
+      "query": "How many days per week can I work from home?",
+      "rewrite": "How many days per week can I work from home?",
+      "clarification": "",
+      "rank": 1,
+      "seconds": 0.28
+    },
+    {
+      "language": "en",
+      "topic": "OT",
+      "query": "What is the overtime pay rate on public holidays?",
+      "rewrite": "What is the overtime pay rate on public holidays?",
+      "clarification": "",
+      "rank": 1,
+      "seconds": 2.77
+    },
+    {
+      "language": "en",
+      "topic": "Chấm công",
+      "query": "When does the monthly attendance record close?",
+      "rewrite": "When does the monthly attendance record close?",
+      "clarification": "",
+      "rank": 3,
+      "seconds": 2.42
+    },
+    {
+      "language": "en",
+      "topic": "Quy định thử việc",
+      "query": "How long is the probation period?",
+      "rewrite": "How long is the probation period?",
+      "clarification": "",
+      "rank": 1,
+      "seconds": 0.28
+    },
+    {
+      "language": "en",
+      "topic": "Quy trình nghỉ việc",
+      "query": "How much notice must I give before resigning?",
+      "rewrite": "How much notice must I give before resigning?",
+      "clarification": "",
+      "rank": 1,
+      "seconds": 0.27
+    },
+    {
+      "language": "en",
+      "topic": "Quy trình thanh toán",
+      "query": "On which weekday does accounting process payments?",
+      "rewrite": "On which weekday does accounting process payments?",
+      "clarification": "",
+      "rank": 1,
+      "seconds": 0.27
+    },
+    {
+      "language": "en",
+      "topic": "Công tác phí",
+      "query": "How soon after a business trip must I submit expenses?",
+      "rewrite": "How soon after a business trip must I submit expenses?",
+      "clarification": "",
+      "rank": 1,
+      "seconds": 0.28
+    },
+    {
+      "language": "en",
+      "topic": "Đặt phòng họp",
+      "query": "How do I reserve a meeting room?",
+      "rewrite": "How do I reserve a meeting room?",
+      "clarification": "",
+      "rank": 1,
+      "seconds": 0.26
+    },
+    {
+      "language": "en",
+      "topic": "Mượn thiết bị",
+      "query": "Who should I contact to borrow a projector?",
+      "rewrite": "Who should I contact to borrow a projector?",
+      "clarification": "",
+      "rank": 1,
+      "seconds": 0.27
+    },
+    {
+      "language": "en",
+      "topic": "Thưởng",
+      "query": "When is the thirteenth month salary paid?",
+      "rewrite": "When is the thirteenth month salary paid?",
+      "clarification": "",
+      "rank": 1,
+      "seconds": 0.35
+    },
+    {
+      "language": "en",
+      "topic": "Bảo hiểm",
+      "query": "Can dependents enroll in health insurance?",
+      "rewrite": "Can dependents enroll in health insurance?",
+      "clarification": "",
+      "rank": 1,
+      "seconds": 0.37
+    },
+    {
+      "language": "vi_no_accents",
+      "topic": "Nghỉ phép",
+      "query": "Toi duoc nghi phep bao nhieu ngay moi nam?",
+      "rewrite": "Toi duoc nghi phep bao nhieu ngay moi nam?",
+      "clarification": "",
+      "rank": 1,
+      "seconds": 0.34
+    },
+    {
+      "language": "vi_no_accents",
+      "topic": "WFH",
+      "query": "Moi tuan duoc lam viec o nha may ngay?",
+      "rewrite": "Moi tuan duoc lam viec o nha may ngay?",
+      "clarification": "",
+      "rank": null,
+      "seconds": 0.28
+    },
+    {
+      "language": "vi_no_accents",
+      "topic": "OT",
+      "query": "Lam them vao ngay le duoc tra bao nhieu?",
+      "rewrite": "Lam them vao ngay le duoc tra bao nhieu?",
+      "clarification": "",
+      "rank": 5,
+      "seconds": 0.46
+    },
+    {
+      "language": "vi_no_accents",
+      "topic": "Chấm công",
+      "query": "Khi nao bang cong hang thang bi khoa?",
+      "rewrite": "Khi nao bang cong hang thang bi khoa?",
+      "clarification": "",
+      "rank": 3,
+      "seconds": 0.3
+    },
+    {
+      "language": "vi_no_accents",
+      "topic": "Quy định thử việc",
+      "query": "Thoi gian thu viec keo dai bao lau?",
+      "rewrite": "Thoi gian thu viec keo dai bao lau?",
+      "clarification": "",
+      "rank": null,
+      "seconds": 0.41
+    },
+    {
+      "language": "vi_no_accents",
+      "topic": "Quy trình nghỉ việc",
+      "query": "Muon thoi viec thi phai bao truoc bao lau?",
+      "rewrite": "Muon thoi viec thi phai bao truoc bao lau?",
+      "clarification": "",
+      "rank": 1,
+      "seconds": 0.31
+    },
+    {
+      "language": "vi_no_accents",
+      "topic": "Quy trình thanh toán",
+      "query": "Ke toan thanh toan vao thu may?",
+      "rewrite": "Ke toan thanh toan vao thu may?",
+      "clarification": "",
+      "rank": null,
+      "seconds": 0.41
+    },
+    {
+      "language": "vi_no_accents",
+      "topic": "Công tác phí",
+      "query": "Đi cong tac ve thi han nop hoa don hoan tien la bao lau?",
+      "rewrite": "Đi cong tac ve thi han nop hoa don hoan tien la bao lau?",
+      "clarification": "",
+      "rank": null,
+      "seconds": 0.39
+    },
+    {
+      "language": "vi_no_accents",
+      "topic": "Đặt phòng họp",
+      "query": "Toi muon dat phong de hop nhom thi lam the nao?",
+      "rewrite": "Toi muon dat phong de hop nhom thi lam the nao?",
+      "clarification": "",
+      "rank": null,
+      "seconds": 0.31
+    },
+    {
+      "language": "vi_no_accents",
+      "topic": "Mượn thiết bị",
+      "query": "Toi can muon may chieu thi lien he ai?",
+      "rewrite": "Toi can muon may chieu thi lien he ai?",
+      "clarification": "",
+      "rank": 3,
+      "seconds": 0.21
+    },
+    {
+      "language": "vi_no_accents",
+      "topic": "Thưởng",
+      "query": "Luong thang thu muoi ba duoc tra khi nao?",
+      "rewrite": "Luong thang thu muoi ba duoc tra khi nao?",
+      "clarification": "",
+      "rank": null,
+      "seconds": 0.4
+    },
+    {
+      "language": "vi_no_accents",
+      "topic": "Bảo hiểm",
+      "query": "Nguoi phu thuoc co duoc dang ky bao hiem suc khoe khong?",
+      "rewrite": "Nguoi phu thuoc co duoc dang ky bao hiem suc khoe khong?",
+      "clarification": "",
+      "rank": null,
+      "seconds": 0.31
+    }
+  ],
+  "answers": [
+    {
+      "role": "employee",
+      "question": "Tôi được nghỉ phép bao nhiêu ngày mỗi năm?",
+      "response": {
+        "answer": "Nhân viên chính thức được hưởng 12 ngày phép năm.",
+        "sources": [
+          {
+            "document_name": "nghi-phep.docx",
+            "section": "Nghỉ phép",
+            "chunk_id": "DOC_001_CHUNK_001"
+          },
+          {
+            "document_name": "quy-trinh-nghi-viec.docx",
+            "section": "Quy trình nghỉ việc",
+            "chunk_id": "DOC_010_CHUNK_001"
+          },
+          {
+            "document_name": "wfh.docx",
+            "section": "WFH",
+            "chunk_id": "DOC_004_CHUNK_001"
+          },
+          {
+            "document_name": "ot.docx",
+            "section": "OT",
+            "chunk_id": "DOC_005_CHUNK_001"
+          },
+          {
+            "document_name": "quy-dinh-su-dung-tai-san.docx",
+            "section": "Quy định sử dụng tài sản",
+            "chunk_id": "DOC_019_CHUNK_001"
+          }
+        ],
+        "conversation_id": 0,
+        "fallback": false
+      },
+      "seconds": 2.42
+    },
+    {
+      "role": "employee",
+      "question": "How many annual leave days do I get?",
+      "response": {
+        "answer": "You get 12 days of annual leave, plus additional days based on your years of service (increased by thâm niên, or seniority).",
+        "sources": [
+          {
+            "document_name": "nghi-phep.docx",
+            "section": "Nghỉ phép",
+            "chunk_id": "DOC_001_CHUNK_001"
+          },
+          {
+            "document_name": "ot.docx",
+            "section": "OT",
+            "chunk_id": "DOC_005_CHUNK_001"
+          },
+          {
+            "document_name": "quy-trinh-onboarding.docx",
+            "section": "Quy trình onboarding",
+            "chunk_id": "DOC_011_CHUNK_001"
+          },
+          {
+            "document_name": "quy-trinh-nghi-viec.docx",
+            "section": "Quy trình nghỉ việc",
+            "chunk_id": "DOC_010_CHUNK_001"
+          },
+          {
+            "document_name": "di-muon-ve-som.docx",
+            "section": "Đi muộn/về sớm",
+            "chunk_id": "DOC_002_CHUNK_001"
+          }
+        ],
+        "conversation_id": 0,
+        "fallback": false
+      },
+      "seconds": 1.15
+    },
+    {
+      "role": "employee",
+      "question": "Mỗi tuần được làm việc ở nhà mấy ngày?",
+      "response": {
+        "answer": "Mỗi tuần, nhân viên được làm việc từ xa tối đa 2 ngày.",
+        "sources": [
+          {
+            "document_name": "wfh.docx",
+            "section": "WFH",
+            "chunk_id": "DOC_004_CHUNK_001"
+          },
+          {
+            "document_name": "nghi-phep.docx",
+            "section": "Nghỉ phép",
+            "chunk_id": "DOC_001_CHUNK_001"
+          },
+          {
+            "document_name": "quy-trinh-onboarding.docx",
+            "section": "Quy trình onboarding",
+            "chunk_id": "DOC_011_CHUNK_001"
+          },
+          {
+            "document_name": "quy-dinh-noi-bo.docx",
+            "section": "Quy định nội bộ",
+            "chunk_id": "DOC_025_CHUNK_001"
+          },
+          {
+            "document_name": "quy-trinh-nghi-viec.docx",
+            "section": "Quy trình nghỉ việc",
+            "chunk_id": "DOC_010_CHUNK_001"
+          }
+        ],
+        "conversation_id": 0,
+        "fallback": false
+      },
+      "seconds": 0.98
+    },
+    {
+      "role": "employee",
+      "question": "How many days per week can I work from home?",
+      "response": {
+        "answer": "You can work from home a maximum of 2 days per week.",
+        "sources": [
+          {
+            "document_name": "wfh.docx",
+            "section": "WFH",
+            "chunk_id": "DOC_004_CHUNK_001"
+          },
+          {
+            "document_name": "nghi-phep.docx",
+            "section": "Nghỉ phép",
+            "chunk_id": "DOC_001_CHUNK_001"
+          },
+          {
+            "document_name": "ot.docx",
+            "section": "OT",
+            "chunk_id": "DOC_005_CHUNK_001"
+          },
+          {
+            "document_name": "quy-trinh-nghi-viec.docx",
+            "section": "Quy trình nghỉ việc",
+            "chunk_id": "DOC_010_CHUNK_001"
+          },
+          {
+            "document_name": "di-muon-ve-som.docx",
+            "section": "Đi muộn/về sớm",
+            "chunk_id": "DOC_002_CHUNK_001"
+          }
+        ],
+        "conversation_id": 0,
+        "fallback": false
+      },
+      "seconds": 0.78
+    },
+    {
+      "role": "employee",
+      "question": "What is the annual bonus payment schedule?",
+      "response": {
+        "answer": "I couldn't find any information on the annual bonus payment schedule in the provided document excerpts.",
+        "sources": [],
+        "conversation_id": 0,
+        "fallback": true
+      },
+      "seconds": 1.04
+    },
+    {
+      "role": "hr",
+      "question": "What is the annual bonus payment schedule?",
+      "response": {
+        "answer": "Theo thông tin trong tài liệu \"thuong.docx\", Thưởng hiệu suất (KPI bonus) được chi trả vào quý 1 năm sau, dựa trên đánh giá hiệu suất và kết quả kinh doanh của công ty.",
+        "sources": [
+          {
+            "document_name": "thuong.docx",
+            "section": "Thưởng",
+            "chunk_id": "DOC_008_CHUNK_001"
+          },
+          {
+            "document_name": "chinh-sach-phuc-loi.docx",
+            "section": "Chính sách phúc lợi",
+            "chunk_id": "DOC_006_CHUNK_001"
+          },
+          {
+            "document_name": "teambuilding.docx",
+            "section": "Teambuilding",
+            "chunk_id": "DOC_027_CHUNK_001"
+          },
+          {
+            "document_name": "nghi-phep.docx",
+            "section": "Nghỉ phép",
+            "chunk_id": "DOC_001_CHUNK_001"
+          },
+          {
+            "document_name": "quy-trinh-thanh-toan.docx",
+            "section": "Quy trình thanh toán",
+            "chunk_id": "DOC_014_CHUNK_001"
+          }
+        ],
+        "conversation_id": 0,
+        "fallback": false
+      },
+      "seconds": 1.58
+    },
+    {
+      "role": "employee",
+      "question": "How do I bake a chocolate cake?",
+      "response": {
+        "answer": "I don't have information on baking a chocolate cake. The document excerpts provided only discuss overtime (OT) policies and do not contain any information on baking or recipes.",
+        "sources": [],
+        "conversation_id": 0,
+        "fallback": true
+      },
+      "seconds": 1.08
+    },
+    {
+      "role": "employee",
+      "question": "Làm thế nào để làm bánh sô cô la?",
+      "response": {
+        "answer": "Tôi không thể tìm thấy thông tin về công thức làm bánh sô cô la trong các tài liệu được cung cấp. Bạn có thể cung cấp thêm thông tin hoặc tài liệu liên quan đến công thức này không?",
+        "sources": [],
+        "conversation_id": 0,
+        "fallback": true
+      },
+      "seconds": 1.24
+    }
+  ],
+  "run_metadata": {
+    "rewrite_model": "gemini-3.6-flash",
+    "embedding_model": "bge-m3",
+    "answer_model": "llama3.2",
+    "successful_rewrite_responses_including_preflight": 8,
+    "expected_calls_including_preflight": 45,
+    "confirmation_preflight": "HTTP 503",
+    "note": "Earlier model gemini-2.5-flash returned 404 unavailable to new users. Original-query fallback heavily affected this run; individual failure reasons were not captured. A subsequent direct WFH rewrite succeeded; confirmation preflight failed with HTTP 503."
+  }
+}

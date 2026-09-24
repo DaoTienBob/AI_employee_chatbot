@@ -1,0 +1,425 @@
+{
+  "retrieval": [
+    {
+      "language": "vi",
+      "topic": "Nghỉ phép",
+      "query": "Tôi được nghỉ phép bao nhiêu ngày mỗi năm?",
+      "rewrite": "Tôi được nghỉ phép bao nhiêu ngày mỗi năm?",
+      "clarification": "",
+      "rank": 1,
+      "original_rank": 1,
+      "seconds": 0.03
+    },
+    {
+      "language": "vi",
+      "topic": "WFH",
+      "query": "Mỗi tuần được làm việc ở nhà mấy ngày?",
+      "rewrite": "Mỗi tuần được làm việc ở nhà mấy ngày?",
+      "clarification": "",
+      "rank": 1,
+      "original_rank": 1,
+      "seconds": 0.03
+    },
+    {
+      "language": "vi",
+      "topic": "OT",
+      "query": "Làm thêm vào ngày lễ được trả bao nhiêu?",
+      "rewrite": "Làm thêm vào ngày lễ được trả bao nhiêu?",
+      "clarification": "",
+      "rank": 1,
+      "original_rank": 1,
+      "seconds": 0.03
+    },
+    {
+      "language": "vi",
+      "topic": "Chấm công",
+      "query": "Khi nào bảng công hàng tháng bị khóa?",
+      "rewrite": "Khi nào bảng công hàng tháng bị khóa?",
+      "clarification": "",
+      "rank": 1,
+      "original_rank": 1,
+      "seconds": 0.03
+    },
+    {
+      "language": "vi",
+      "topic": "Quy định thử việc",
+      "query": "Thời gian thử việc kéo dài bao lâu?",
+      "rewrite": "Thời gian thử việc kéo dài bao lâu?",
+      "clarification": "",
+      "rank": 1,
+      "original_rank": 1,
+      "seconds": 0.03
+    },
+    {
+      "language": "vi",
+      "topic": "Quy trình nghỉ việc",
+      "query": "Muốn thôi việc thì phải báo trước bao lâu?",
+      "rewrite": "Muốn thôi việc thì phải báo trước bao lâu?",
+      "clarification": "",
+      "rank": 1,
+      "original_rank": 1,
+      "seconds": 0.03
+    },
+    {
+      "language": "vi",
+      "topic": "Quy trình thanh toán",
+      "query": "Kế toán thanh toán vào thứ mấy?",
+      "rewrite": "Kế toán thanh toán vào thứ mấy?",
+      "clarification": "",
+      "rank": 1,
+      "original_rank": 1,
+      "seconds": 0.03
+    },
+    {
+      "language": "vi",
+      "topic": "Công tác phí",
+      "query": "Đi công tác về thì hạn nộp hóa đơn hoàn tiền là bao lâu?",
+      "rewrite": "Đi công tác về thì hạn nộp hóa đơn hoàn tiền là bao lâu?",
+      "clarification": "",
+      "rank": 1,
+      "original_rank": 1,
+      "seconds": 0.03
+    },
+    {
+      "language": "vi",
+      "topic": "Đặt phòng họp",
+      "query": "Tôi muốn đặt phòng để họp nhóm thì làm thế nào?",
+      "rewrite": "Tôi muốn đặt phòng để họp nhóm thì làm thế nào?",
+      "clarification": "",
+      "rank": 1,
+      "original_rank": 1,
+      "seconds": 0.03
+    },
+    {
+      "language": "vi",
+      "topic": "Mượn thiết bị",
+      "query": "Tôi cần mượn máy chiếu thì liên hệ ai?",
+      "rewrite": "Tôi cần mượn máy chiếu thì liên hệ ai?",
+      "clarification": "",
+      "rank": 1,
+      "original_rank": 1,
+      "seconds": 0.03
+    },
+    {
+      "language": "vi",
+      "topic": "Thưởng",
+      "query": "Lương tháng thứ mười ba được trả khi nào?",
+      "rewrite": "Lương tháng thứ mười ba được trả khi nào?",
+      "clarification": "",
+      "rank": 1,
+      "original_rank": 1,
+      "seconds": 0.03
+    },
+    {
+      "language": "vi",
+      "topic": "Bảo hiểm",
+      "query": "Người phụ thuộc có được đăng ký bảo hiểm sức khỏe không?",
+      "rewrite": "Người phụ thuộc có được đăng ký bảo hiểm sức khỏe không?",
+      "clarification": "",
+      "rank": 1,
+      "original_rank": 1,
+      "seconds": 0.03
+    },
+    {
+      "language": "en",
+      "topic": "Nghỉ phép",
+      "query": "How many annual leave days do I get?",
+      "rewrite": "How many annual leave days do I get?",
+      "clarification": "",
+      "rank": 1,
+      "original_rank": 1,
+      "seconds": 0.03
+    },
+    {
+      "language": "en",
+      "topic": "WFH",
+      "query": "How many days per week can I work from home?",
+      "rewrite": "How many days per week can I work from home?",
+      "clarification": "",
+      "rank": 1,
+      "original_rank": 1,
+      "seconds": 0.03
+    },
+    {
+      "language": "en",
+      "topic": "OT",
+      "query": "What is the overtime pay rate on public holidays?",
+      "rewrite": "What is the overtime pay rate on public holidays?",
+      "clarification": "",
+      "rank": 1,
+      "original_rank": 1,
+      "seconds": 0.03
+    },
+    {
+      "language": "en",
+      "topic": "Chấm công",
+      "query": "When does the monthly attendance record close?",
+      "rewrite": "When does the monthly attendance record close?",
+      "clarification": "",
+      "rank": 3,
+      "original_rank": 3,
+      "seconds": 0.03
+    },
+    {
+      "language": "en",
+      "topic": "Quy định thử việc",
+      "query": "How long is the probation period?",
+      "rewrite": "How long is the probation period?",
+      "clarification": "",
+      "rank": 1,
+      "original_rank": 1,
+      "seconds": 0.03
+    },
+    {
+      "language": "en",
+      "topic": "Quy trình nghỉ việc",
+      "query": "How much notice must I give before resigning?",
+      "rewrite": "How much notice must I give before resigning?",
+      "clarification": "",
+      "rank": 1,
+      "original_rank": 1,
+      "seconds": 0.03
+    },
+    {
+      "language": "en",
+      "topic": "Quy trình thanh toán",
+      "query": "On which weekday does accounting process payments?",
+      "rewrite": "On which weekday does accounting process payments?",
+      "clarification": "",
+      "rank": 1,
+      "original_rank": 1,
+      "seconds": 0.03
+    },
+    {
+      "language": "en",
+      "topic": "Công tác phí",
+      "query": "How soon after a business trip must I submit expenses?",
+      "rewrite": "How soon after a business trip must I submit expenses?",
+      "clarification": "",
+      "rank": 1,
+      "original_rank": 1,
+      "seconds": 0.03
+    },
+    {
+      "language": "en",
+      "topic": "Đặt phòng họp",
+      "query": "How do I reserve a meeting room?",
+      "rewrite": "How do I reserve a meeting room?",
+      "clarification": "",
+      "rank": 1,
+      "original_rank": 1,
+      "seconds": 0.03
+    },
+    {
+      "language": "en",
+      "topic": "Mượn thiết bị",
+      "query": "Who should I contact to borrow a projector?",
+      "rewrite": "Who should I contact to borrow a projector?",
+      "clarification": "",
+      "rank": 3,
+      "original_rank": 3,
+      "seconds": 0.03
+    },
+    {
+      "language": "en",
+      "topic": "Thưởng",
+      "query": "When is the thirteenth month salary paid?",
+      "rewrite": "When is the thirteenth month salary paid?",
+      "clarification": "",
+      "rank": 1,
+      "original_rank": 1,
+      "seconds": 0.03
+    },
+    {
+      "language": "en",
+      "topic": "Bảo hiểm",
+      "query": "Can dependents enroll in health insurance?",
+      "rewrite": "Can dependents enroll in health insurance?",
+      "clarification": "",
+      "rank": 1,
+      "original_rank": 1,
+      "seconds": 0.03
+    },
+    {
+      "language": "vi_no_accents",
+      "topic": "Nghỉ phép",
+      "query": "Toi duoc nghi phep bao nhieu ngay moi nam?",
+      "rewrite": "Tôi được nghỉ phép bao nhiêu ngày mỗi năm?",
+      "clarification": "",
+      "rank": 1,
+      "original_rank": 1,
+      "seconds": 4.96
+    },
+    {
+      "language": "vi_no_accents",
+      "topic": "WFH",
+      "query": "Moi tuan duoc lam viec o nha may ngay?",
+      "rewrite": "Mỗi tuần được làm việc ở nhà mấy ngày?",
+      "clarification": "",
+      "rank": 2,
+      "original_rank": null,
+      "seconds": 1.91
+    },
+    {
+      "language": "vi_no_accents",
+      "topic": "OT",
+      "query": "Lam them vao ngay le duoc tra bao nhieu?",
+      "rewrite": "Làm thêm vào ngày lễ được trả bao nhiêu?",
+      "clarification": "",
+      "rank": 2,
+      "original_rank": null,
+      "seconds": 1.88
+    },
+    {
+      "language": "vi_no_accents",
+      "topic": "Chấm công",
+      "query": "Khi nao bang cong hang thang bi khoa?",
+      "rewrite": "Khi nào bảng công hàng tháng bị khóa?",
+      "clarification": "",
+      "rank": 1,
+      "original_rank": 1,
+      "seconds": 1.76
+    },
+    {
+      "language": "vi_no_accents",
+      "topic": "Quy định thử việc",
+      "query": "Thoi gian thu viec keo dai bao lau?",
+      "rewrite": "Thời gian thử việc kéo dài bao lâu?",
+      "clarification": "",
+      "rank": 2,
+      "original_rank": null,
+      "seconds": 1.77
+    },
+    {
+      "language": "vi_no_accents",
+      "topic": "Quy trình nghỉ việc",
+      "query": "Muon thoi viec thi phai bao truoc bao lau?",
+      "rewrite": "Muốn thôi việc thì phải báo trước bao lâu?",
+      "clarification": "",
+      "rank": 2,
+      "original_rank": null,
+      "seconds": 2.24
+    },
+    {
+      "language": "vi_no_accents",
+      "topic": "Quy trình thanh toán",
+      "query": "Ke toan thanh toan vao thu may?",
+      "rewrite": "Kế toán thanh toán vào thứ mấy?",
+      "clarification": "",
+      "rank": 1,
+      "original_rank": 3,
+      "seconds": 1.76
+    },
+    {
+      "language": "vi_no_accents",
+      "topic": "Công tác phí",
+      "query": "Di cong tac ve thi han nop hoa don hoan tien la bao lau?",
+      "rewrite": "Di công tác về thì hạn nộp hóa đơn hoàn tiền là bao lâu?",
+      "clarification": "",
+      "rank": 3,
+      "original_rank": null,
+      "seconds": 2.09
+    },
+    {
+      "language": "vi_no_accents",
+      "topic": "Đặt phòng họp",
+      "query": "Toi muon dat phong de hop nhom thi lam the nao?",
+      "rewrite": "Tôi muốn đặt phòng để họp nhóm thì làm thế nào?",
+      "clarification": "",
+      "rank": 1,
+      "original_rank": 2,
+      "seconds": 2.31
+    },
+    {
+      "language": "vi_no_accents",
+      "topic": "Mượn thiết bị",
+      "query": "Toi can muon may chieu thi lien he ai?",
+      "rewrite": "Tôi cần mượn máy chiếu thì liên hệ ai?",
+      "clarification": "",
+      "rank": 1,
+      "original_rank": 3,
+      "seconds": 2.33
+    },
+    {
+      "language": "vi_no_accents",
+      "topic": "Thưởng",
+      "query": "Luong thang thu muoi ba duoc tra khi nao?",
+      "rewrite": "Lương tháng thứ mười ba được trả khi nào?",
+      "clarification": "",
+      "rank": 1,
+      "original_rank": 2,
+      "seconds": 1.95
+    },
+    {
+      "language": "vi_no_accents",
+      "topic": "Bảo hiểm",
+      "query": "Nguoi phu thuoc co duoc dang ky bao hiem suc khoe khong?",
+      "rewrite": "Người phụ thuộc có được đăng ký bảo hiểm sức khỏe không?",
+      "clarification": "",
+      "rank": 2,
+      "original_rank": 2,
+      "seconds": 1.98
+    }
+  ],
+  "extra_checks": [
+    {
+      "query": "and next year?",
+      "history": [
+        {
+          "role": "user",
+          "content": "How many annual leave days do I get?"
+        }
+      ],
+      "route": "follow_up",
+      "result": {
+        "query": "",
+        "clarification": "Do you mean how many annual leave days will you get next year?"
+      },
+      "seconds": 2.17
+    },
+    {
+      "query": "còn thử việc thì sao?",
+      "history": [
+        {
+          "role": "user",
+          "content": "Tôi được nghỉ phép mấy ngày?"
+        }
+      ],
+      "route": "follow_up",
+      "result": {
+        "query": "Còn thử việc thì sao?",
+        "clarification": ""
+      },
+      "seconds": 1.68
+    },
+    {
+      "query": "xin nghỉ",
+      "history": [],
+      "route": "ambiguous_vietnamese",
+      "result": {
+        "query": "",
+        "clarification": "Bạn muốn xin nghỉ phép hay thôi việc?"
+      },
+      "seconds": 1.77
+    },
+    {
+      "query": "Can I request nghi phep online?",
+      "history": [],
+      "route": "unaccented_vietnamese",
+      "result": {
+        "query": "Can I request nghi phep online?",
+        "clarification": ""
+      },
+      "seconds": 2.49
+    }
+  ],
+  "metadata": {
+    "mode": "adaptive",
+    "embedding_model": "nomic-embed-text-v2-moe",
+    "rewrite_model": "qwen3.5:latest",
+    "rewrite_calls": 12,
+    "rewrite_errors": 0,
+    "previous_always_calls": 36,
+    "answer_generation_retested": false
+  }
+}
