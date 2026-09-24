@@ -89,7 +89,11 @@ def get_current_user(
     subject = payload.get("sub")
     if subject is None:
         raise _credentials_error
-    user = db.get(User, int(subject))
+    try:
+        user_id = int(subject)
+    except (ValueError, TypeError):
+        raise _credentials_error
+    user = db.get(User, user_id)
     if user is None or not user.is_active:
         raise _credentials_error
     return user

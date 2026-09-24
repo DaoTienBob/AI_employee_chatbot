@@ -11,7 +11,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, Query, status
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from backend.app.config import SUPPORTED_FILE_EXTENSIONS, get_settings
@@ -72,7 +72,7 @@ def _check_declared_size(upload: UploadFile, max_bytes: int) -> None:
     """Reject uploads whose declared size exceeds the limit (fast path)."""
     if upload.size is not None and upload.size > max_bytes:
         raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            status_code=getattr(status, "HTTP_413_CONTENT_TOO_LARGE", 413),
             detail=f"File exceeds the {max_bytes // (1024 * 1024)} MB upload limit",
         )
 
@@ -110,7 +110,7 @@ def _ingest_file(
     data = file.file.read(max_bytes + 1)
     if len(data) > max_bytes:
         raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            status_code=getattr(status, "HTTP_413_CONTENT_TOO_LARGE", 413),
             detail=f"File exceeds the {settings.max_upload_size_mb} MB upload limit",
         )
     if not data:
@@ -250,9 +250,17 @@ def list_documents(
     role = current_user.role
     if role not in ROLES:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"Unknown role {role!r}")
+    # ``employee`` is the general role: an employee-visible document is
+    # accessible to every role (employee, hr, manager).
     documents = db.scalars(
         select(Document)
-        .where(Document.is_active.is_(True), getattr(Document, f"allowed_{role}").is_(True))
+        .where(
+            Document.is_active.is_(True),
+            or_(
+                Document.allowed_employee.is_(True),
+                getattr(Document, f"allowed_{role}").is_(True),
+            ),
+        )
         .order_by(Document.id)
     ).all()
     return [_to_public(d) for d in documents]
@@ -268,7 +276,10 @@ def search_documents(
         raise HTTPException(status_code=403, detail="Unknown role")
     if not query.strip():
         raise HTTPException(status_code=422, detail="Query must not be blank")
-    return get_vector_store().search(query, current_user.role)
+    try:
+        return get_vector_store().search(query, current_user.role)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @router.put("/{document_id}", response_model=DocumentReplaceResponse)

@@ -18,7 +18,12 @@ _settings = get_settings()
 engine = create_engine(
     _settings.database_url,
     # SQLite needs this flag because FastAPI serves requests on threads.
-    connect_args={"check_same_thread": False} if _settings.database_url.startswith("sqlite") else {},
+    connect_args={
+        "check_same_thread": False,
+        # Wait instead of failing with "database is locked" when another
+        # request holds the write lock (chat persistence + admin upload).
+        "timeout": 30,
+    } if _settings.database_url.startswith("sqlite") else {},
     echo=False,
 )
 

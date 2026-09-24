@@ -79,3 +79,62 @@ class DocumentReplaceResponse(BaseModel):
     document: DocumentPublic
     chunk_count: int
     sections: list[str]
+
+
+# ---------------------------------------------------------------------------
+# Phase 3 — Chat / RAG schemas (T13-T18)
+# ---------------------------------------------------------------------------
+
+
+class ChatRequest(BaseModel):
+    """Body for POST /chat (T14)."""
+
+    question: str = Field(..., min_length=1, max_length=2000, description="Employee question")
+    conversation_id: int | None = Field(
+        None, description="Continue an existing conversation; omit to start a new one"
+    )
+
+    @field_validator("question")
+    @classmethod
+    def _strip_question(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("question must not be blank")
+        return value
+
+
+class SourceReference(BaseModel):
+    """A single cited document section returned with a RAG answer (T15/FR06)."""
+
+    document_name: str
+    section: str
+    chunk_id: str
+
+
+class ChatResponse(BaseModel):
+    """Response from POST /chat (T14/T15)."""
+
+    answer: str
+    sources: list[SourceReference]
+    conversation_id: int
+    fallback: bool = False  # True when no authorized evidence was found (T17)
+
+
+class ConversationPublic(BaseModel):
+    """Conversation summary for GET /conversations (T18)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    created_at: str  # ISO timestamp
+
+
+class MessagePublic(BaseModel):
+    """A single message for GET /conversations/{id} (T18)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    role: str
+    content: str
+    created_at: str  # ISO timestamp

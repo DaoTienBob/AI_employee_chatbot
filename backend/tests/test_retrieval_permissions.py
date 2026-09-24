@@ -55,6 +55,10 @@ RESTRICTED_DOC = [
 REPLACEMENT_DOC = [
     ("Leave Policy", "Employees receive 20 days of annual leave per year."),
 ]
+# Distinct content so it never collides with assertions in other tests.
+EMPLOYEE_ONLY_DOC = [
+    ("Wellness Program", "Refreshment budget is replenished every quarter."),
+]
 
 ADMIN = "admin@company.com"
 EMPLOYEE = "employee@company.com"
@@ -143,6 +147,29 @@ def test_document_list_role_scoping(client, indexed_documents):
     hr_ids = {d["id"] for d in client.get("/documents", headers=_login(client, HR)).json()}
     assert indexed_documents["general"] in hr_ids
     assert indexed_documents["restricted"] in hr_ids
+
+
+def test_employee_role_grants_access_to_all(client, admin_headers):
+    """A document tagged for employees is visible/retrievable by every role."""
+    response = client.post(
+        "/documents/upload",
+        headers=admin_headers,
+        files={"file": ("employee_only.docx", _docx_bytes(EMPLOYEE_ONLY_DOC), DOCX_MIME)},
+        data={"allowed_roles": "employee"},
+    )
+    assert response.status_code == 200, response.text
+    doc_id = response.json()["document"]["id"]
+
+    for email in (EMPLOYEE, HR, "manager@company.com"):
+        ids = {d["id"] for d in client.get("/documents", headers=_login(client, email)).json()}
+        assert doc_id in ids, f"{email} cannot list the employee-tagged document"
+
+    store = get_vector_store()
+    for role in ("employee", "hr", "manager"):
+        hits = store.search("refreshment budget", role)
+        assert any(
+            h["metadata"]["document_id"] == f"DOC_{doc_id:03d}" for h in hits
+        ), f"{role} cannot retrieve the employee-tagged document"
 
 
 # --- T11: replacement removes old chunks -------------------------------------
