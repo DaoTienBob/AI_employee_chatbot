@@ -76,6 +76,16 @@ class Document(Base):
         }
         return [role for role in ROLES if flags[role]]
 
+    def visible_to(self, role: str) -> bool:
+        """Whether this document grants access to ``role``.
+
+        ``employee`` is the general role: a document tagged for employees is
+        visible to every user (employee, hr and manager). A document is
+        accessible to a role when it is employee-visible OR explicitly grants
+        that role.
+        """
+        return bool(self.allowed_employee or getattr(self, f"allowed_{role}", False))
+
     def __repr__(self) -> str:  # pragma: no cover - debugging aid
         return f"<Document id={self.id} name={self.document_name!r} active={self.is_active}>"
 

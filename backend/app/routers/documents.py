@@ -11,7 +11,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, Query, status
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from backend.app.config import SUPPORTED_FILE_EXTENSIONS, get_settings
@@ -250,9 +250,17 @@ def list_documents(
     role = current_user.role
     if role not in ROLES:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"Unknown role {role!r}")
+    # ``employee`` is the general role: an employee-visible document is
+    # accessible to every role (employee, hr, manager).
     documents = db.scalars(
         select(Document)
-        .where(Document.is_active.is_(True), getattr(Document, f"allowed_{role}").is_(True))
+        .where(
+            Document.is_active.is_(True),
+            or_(
+                Document.allowed_employee.is_(True),
+                getattr(Document, f"allowed_{role}").is_(True),
+            ),
+        )
         .order_by(Document.id)
     ).all()
     return [_to_public(d) for d in documents]

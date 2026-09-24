@@ -84,7 +84,9 @@ export default function Login({ onLogin }) {
           <p className="login-hint">
             Demo accounts: <code>employee@example.com</code>,{" "}
             <code>hr@example.com</code>, <code>manager@example.com</code> —
-            password: <code>password123</code>
+            password: <code>password123</code>.
+            <br />
+            Admin (for document management): <code>admin@example.com</code> — same password.
           </p>
         )}
       </div>

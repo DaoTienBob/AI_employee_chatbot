@@ -185,10 +185,15 @@ def test_authenticated_search_role_isolation(client, role):
     assert response.status_code == 200
     hits = response.json()
     assert hits
-    assert all(hit['metadata'][f'allow_{role}'] for hit in hits)
+    # An employee-tagged document is general (visible to every role); otherwise
+    # the role's own flag must be set.
+    assert all(hit['metadata'][f'allow_{role}'] or hit['metadata']['allow_employee'] for hit in hits)
     returned = {hit['metadata']['document_id'] for hit in hits}
     assert f'DOC_{ids[role]:03d}' in returned
-    assert not returned.intersection(f'DOC_{id:03d}' for other, id in ids.items() if other != role)
+    # Restricted (non-employee) documents only ever appear for their own role.
+    assert not returned.intersection(
+        f'DOC_{ids[other]:03d}' for other in ids if other != role and other != 'employee'
+    )
 
 
 def test_search_requires_session_and_uses_current_role(client):

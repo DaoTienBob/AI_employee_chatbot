@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import Login from "./Login";
 import Markdown from "./Markdown";
+import Documents from "./Documents";
 import { errorMessage } from "./errors";
 
 const API_BASE = "/api";
@@ -151,6 +152,8 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [conversationId, setConversationId] = useState(null);
+  // Lightweight page navigation: "chat" (default) or "documents" (admin page).
+  const [view, setView] = useState("chat");
   const messagesEndRef = useRef(null);
   const refreshTimerRef = useRef(null);
 
@@ -236,6 +239,7 @@ export default function App() {
       },
     ]);
     setConversationId(null);
+    setView("chat");
   }
 
   function clearTokenRefreshTimer() {
@@ -305,6 +309,7 @@ export default function App() {
     ]);
     setConversationId(null);
     setError("");
+    setView("chat");
   }
 
   async function handleSend(e) {
@@ -380,71 +385,86 @@ export default function App() {
           {user.is_admin && (
             <span className="role-badge role-admin">admin</span>
           )}
+          {user.is_admin && (
+            <button
+              className="doc-manage-btn"
+              onClick={() => setView(view === "documents" ? "chat" : "documents")}
+              aria-pressed={view === "documents"}
+            >
+              {view === "documents" ? "← Back to chat" : "Manage documents"}
+            </button>
+          )}
           <button className="logout-btn" onClick={handleLogout}>
             Sign out
           </button>
         </div>
       </header>
 
-      {error && (
-        <div className="error-bar" role="alert">
-          {error}
-          <button
-            className="error-dismiss"
-            onClick={() => setError("")}
-            aria-label="Dismiss"
-          >
-            ✕
-          </button>
-        </div>
-      )}
-
-      <section className="chat">
-        <div className="messages">
-          {messages.map((message, index) => (
-            <div
-              key={index}
-              className={`message ${message.role}${message.fallback ? " fallback" : ""}`}
-            >
-              <div className="message-content">
-                {message.role === "assistant" ? (
-                  <Markdown content={message.content} />
-                ) : (
-                  message.content
-                )}
-              </div>
-              {message.role === "assistant" && (
-                <Sources sources={message.sources} />
-              )}
-            </div>
-          ))}
-
-          {loading && (
-            <div className="message assistant">
-              <div className="typing-indicator">
-                <span />
-                <span />
-                <span />
-              </div>
+      {view === "documents" && user.is_admin ? (
+        <Documents onExpired={handleExpired} />
+      ) : (
+        <>
+          {error && (
+            <div className="error-bar" role="alert">
+              {error}
+              <button
+                className="error-dismiss"
+                onClick={() => setError("")}
+                aria-label="Dismiss"
+              >
+                ✕
+              </button>
             </div>
           )}
 
-          <div ref={messagesEndRef} />
-        </div>
+          <section className="chat">
+            <div className="messages">
+              {messages.map((message, index) => (
+                <div
+                  key={index}
+                  className={`message ${message.role}${message.fallback ? " fallback" : ""}`}
+                >
+                  <div className="message-content">
+                    {message.role === "assistant" ? (
+                      <Markdown content={message.content} />
+                    ) : (
+                      message.content
+                    )}
+                  </div>
+                  {message.role === "assistant" && (
+                    <Sources sources={message.sources} />
+                  )}
+                </div>
+              ))}
 
-        <form className="composer" onSubmit={handleSend}>
-          <input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask a question about internal documents…"
-            aria-label="Question"
-            disabled={loading}
-          />
-          <button type="submit" disabled={!input.trim() || loading}>
-            {loading ? "…" : "Send"}
-          </button>
-        </form>
-      </section>
+              {loading && (
+                <div className="message assistant">
+                  <div className="typing-indicator">
+                    <span />
+                    <span />
+                    <span />
+                  </div>
+                </div>
+              )}
+
+              <div ref={messagesEndRef} />
+            </div>
+
+            <form className="composer" onSubmit={handleSend}>
+              <input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Ask a question about internal documents…"
+                aria-label="Question"
+                disabled={loading}
+              />
+              <button type="submit" disabled={!input.trim() || loading}>
+                {loading ? "…" : "Send"}
+              </button>
+            </form>
+          </section>
+        </>
+      )}
     </main>
   );
 }

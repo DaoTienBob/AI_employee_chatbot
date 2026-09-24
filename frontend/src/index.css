@@ -409,3 +409,150 @@ body {
   padding: 0.1rem 0.3rem;
   border-radius: 4px;
 }
+
+/* ===========================================================================
+   Admin document manager (upload / update)
+   =========================================================================== */
+
+.doc-manage-btn {
+  padding: 0.3rem 0.75rem;
+  font-size: 0.82rem;
+  background: #0b5cff;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.doc-manage-btn:hover { background: #0947cc; }
+
+.doc-manager {
+  background: #ffffff;
+  border: 1px solid #dde3e9;
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+}
+
+.doc-manager h2 {
+  font-size: 1.05rem;
+  margin: 0 0 0.25rem;
+}
+
+.doc-manager-note {
+  font-size: 0.85rem;
+  color: #718096;
+  margin: 0 0 0.75rem;
+}
+
+/* Mode tabs */
+.doc-mode-tabs {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 0.85rem;
+}
+.doc-mode-tab {
+  padding: 0.4rem 0.85rem;
+  font-size: 0.85rem;
+  background: transparent;
+  color: #4a5568;
+  border: 1px solid #cbd5e0;
+  border-radius: 6px 6px 0 0;
+  cursor: pointer;
+}
+.doc-mode-tab.active {
+  background: #0b5cff;
+  color: #ffffff;
+  border-color: #0b5cff;
+}
+
+.doc-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.doc-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.doc-field label,
+.doc-roles legend {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #4a5568;
+}
+.doc-field select,
+.doc-field input[type="file"] {
+  padding: 0.5rem 0.7rem;
+  border: 1px solid #cbd5e0;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-family: inherit;
+}
+.doc-hint {
+  font-size: 0.8rem;
+  color: #718096;
+  margin: 0;
+}
+
+.doc-roles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  border: 1px solid #dde3e9;
+  border-radius: 8px;
+  padding: 0.6rem 0.75rem 0.5rem;
+}
+.doc-roles label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  color: #4a5568;
+  cursor: pointer;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: #edf2f7;
+}
+.doc-roles label.doc-role-checked {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.doc-error {
+  font-size: 0.85rem;
+  color: #c53030;
+  background: #fff5f5;
+  border: 1px solid #feb2b2;
+  border-radius: 6px;
+  padding: 0.4rem 0.7rem;
+  margin: 0;
+}
+
+.doc-result {
+  font-size: 0.85rem;
+  color: #157347;
+  background: #f0fff4;
+  border: 1px solid #9ae6b4;
+  border-radius: 6px;
+  padding: 0.4rem 0.7rem;
+  margin: 0;
+}
+
+.doc-submit {
+  padding: 0.6rem 1.1rem;
+  border: none;
+  border-radius: 8px;
+  background: #0b5cff;
+  color: #ffffff;
+  font-size: 0.95rem;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s;
+}
+.doc-submit:hover:not(:disabled) { background: #0947cc; }
+.doc-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

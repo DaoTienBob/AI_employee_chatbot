@@ -148,13 +148,20 @@ class VectorStore:
 
         SQLite is authoritative even if index permissions drift after startup.
         """
-        from sqlalchemy import select
+        from sqlalchemy import or_, select
         from backend.app.database import SessionLocal
         from backend.app.models import Document
         with SessionLocal() as db:
+            # ``employee`` is the general role: employee-visible documents are
+            # accessible to every role (employee, hr, manager).
             return [f"DOC_{id:03d}" for id in db.scalars(
-                select(Document.id).where(Document.is_active.is_(True),
-                                          getattr(Document, f"allowed_{role}").is_(True))
+                select(Document.id).where(
+                    Document.is_active.is_(True),
+                    or_(
+                        Document.allowed_employee.is_(True),
+                        getattr(Document, f"allowed_{role}").is_(True),
+                    ),
+                )
             )]
 
     def _search_one(
@@ -173,8 +180,13 @@ class VectorStore:
         result = self._collection.query(
             query_embeddings=query_embeddings,
             n_results=k,
-            where={"$and": [{f"allow_{role}": {"$eq": True}},
-                            {"document_id": {"$in": allowed}}]},
+            # An employee-tagged chunk is visible to every role; a role-specific
+            # flag additionally grants that role alone.
+            where={"$and": [
+                {"$or": [{"allow_employee": {"$eq": True}},
+                         {f"allow_{role}": {"$eq": True}}]},
+                {"document_id": {"$in": allowed}},
+            ]},
             include=["documents", "metadatas", "distances"],
         )
         hits: list[dict] = []
