@@ -87,6 +87,8 @@ class Settings(BaseSettings):
     llm_provider: str = "ollama"
     ollama_base_url: str = "http://localhost:11434"
     llm_model: str = "llama3.2"
+    # Evict Ollama models (keep_alive=0) this process loaded when the app stops.
+    unload_ollama_on_shutdown: bool = True
     gemini_api_key: str = ""
     gemini_base_url: str = "https://generativelanguage.googleapis.com/v1beta"
     openai_api_key: str = ""

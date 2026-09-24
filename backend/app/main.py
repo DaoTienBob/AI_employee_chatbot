@@ -20,6 +20,7 @@ from sqlalchemy import select
 
 from backend.app.config import get_settings
 from backend.app.database import SessionLocal, init_db
+from backend.app.llm import unload_ollama_models
 from backend.app.logging_config import setup_logging
 from backend.app.models import Document, ROLES
 from backend.app.routers import auth, documents
@@ -61,13 +62,16 @@ def _check_index_permissions(db) -> None:
 
 @contextlib.asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
-    """Configure file logging, create SQLite tables and seed demo users."""
+    """Configure file logging, create SQLite tables, seed users; on shutdown
+    evict every Ollama model this process loaded so its RAM/VRAM is freed."""
     setup_logging()
     init_db()
     with SessionLocal() as db:
         seed_demo_users(db)
         _check_index_permissions(db)
     yield
+    if settings.unload_ollama_on_shutdown:
+        unload_ollama_models()
 
 
 app = FastAPI(

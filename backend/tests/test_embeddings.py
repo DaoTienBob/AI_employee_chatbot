@@ -11,7 +11,10 @@ def adapter(provider='sentence_transformers', model='intfloat/multilingual-e5-ba
     embedding = Embeddings.__new__(Embeddings)
     embedding.provider = provider
     embedding.model_name = model
-    embedding.settings = SimpleNamespace(embedding_query_prefix='query: ', embedding_document_prefix='passage: ')
+    embedding.settings = SimpleNamespace(
+        embedding_query_prefix='query: ', embedding_document_prefix='passage: ',
+        ollama_base_url='http://localhost:11434',
+    )
     return embedding
 
 

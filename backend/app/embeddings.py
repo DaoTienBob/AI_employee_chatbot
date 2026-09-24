@@ -4,6 +4,7 @@ import json
 from functools import cached_property, lru_cache
 
 from backend.app.config import get_settings
+from backend.app.llm import track_ollama_model
 
 
 class Embeddings:
@@ -74,7 +75,9 @@ class Embeddings:
         if not inputs:
             return []
         if self.provider == 'ollama':
-            return self.model.embed(model=self.model_name, input=inputs, truncate=False).embeddings
+            vectors = self.model.embed(model=self.model_name, input=inputs, truncate=False).embeddings
+            track_ollama_model(self.settings.ollama_base_url, self.model_name)
+            return vectors
         if any(self.token_count(text) > self.max_tokens for text in inputs):
             raise ValueError('Input exceeds embedding model context; shorten the query or re-chunk the document')
         if self.provider == 'sentence_transformers':

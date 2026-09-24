@@ -43,6 +43,44 @@ class LLMClient(ABC):
 # ---------------------------------------------------------------------------
 
 
+# (base_url, model) pairs this process actually used. Ollama keeps weights
+# resident for ~5 minutes after the last request; an unload request for a
+# model that is NOT loaded would make Ollama load it first, so we only track
+# models that were genuinely served by this process.
+_used_ollama_models: set[tuple[str, str]] = set()
+
+
+def track_ollama_model(base_url: str, model: str) -> None:
+    """Record an Ollama model used by this process for later eviction."""
+    _used_ollama_models.add((base_url.rstrip("/"), model))
+
+
+def unload_ollama_models(*, timeout: float = 30.0) -> list[str]:
+    """Evict every Ollama model this process loaded (``keep_alive=0``).
+
+    Sends Ollama's documented unload request — an empty ``/api/generate``
+    call with ``keep_alive: 0`` — for each tracked model so stopping the
+    backend immediately frees the RAM/VRAM the models occupied. Never
+    raises: a shutdown must not fail because Ollama is unreachable.
+    """
+    import httpx  # noqa: PLC0415 — lazy import, only needed on shutdown
+
+    unloaded: list[str] = []
+    for base_url, model in sorted(_used_ollama_models):
+        try:
+            httpx.post(
+                f"{base_url}/api/generate",
+                json={"model": model, "keep_alive": 0},
+                timeout=timeout,
+            )
+            unloaded.append(model)
+            logger.info("Unloaded Ollama model %r (keep_alive=0)", model)
+        except Exception:
+            logger.warning("Could not unload Ollama model %r at %s", model, base_url)
+    _used_ollama_models.clear()
+    return unloaded
+
+
 class OllamaClient(LLMClient):
     """Calls a locally-running Ollama instance (``ollama`` PyPI package).
 
@@ -56,6 +94,7 @@ class OllamaClient(LLMClient):
             import ollama  # noqa: PLC0415 — lazy import, heavy at startup
 
             self._client = ollama.Client(host=settings.ollama_base_url, timeout=timeout)
+            self._base_url = settings.ollama_base_url.rstrip("/")
             self._model = model or settings.llm_model
             self._json_mode = json_mode
         except ImportError as exc:  # pragma: no cover
@@ -70,6 +109,7 @@ class OllamaClient(LLMClient):
                 options={"temperature": temperature},
                 **({"format": "json", "think": False} if self._json_mode else {}),
             )
+            track_ollama_model(self._base_url, self._model)
             return response["message"]["content"].strip()
         except Exception as exc:
             logger.exception(
