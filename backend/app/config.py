@@ -83,7 +83,7 @@ class Settings(BaseSettings):
     log_max_bytes: int = 5 * 1024 * 1024  # 5 MB per log file
     log_backup_count: int = 3
 
-    # --- LLM (FR04, T13): "ollama" for the local model, "openai" for an external API ---
+    # --- LLM (FR04, T13): "ollama" local, "openai" / "gemini" external APIs ---
     llm_provider: str = "ollama"
     ollama_base_url: str = "http://localhost:11434"
     llm_model: str = "llama3.2"

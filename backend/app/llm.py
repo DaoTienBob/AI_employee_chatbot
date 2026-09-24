@@ -256,11 +256,13 @@ def get_llm_client() -> LLMClient:
             _singleton = OllamaClient()
         elif provider == "openai":
             _singleton = OpenAIClient()
+        elif provider == "gemini":
+            _singleton = GeminiClient()
         elif provider == "mock":
             _singleton = MockClient()
         else:
             raise LLMError(
-                f"Unknown LLM_PROVIDER={provider!r}. Supported: 'ollama', 'openai', 'mock'."
+                f"Unknown LLM_PROVIDER={provider!r}. Supported: 'ollama', 'openai', 'gemini', 'mock'."
             )
         logger.info(
             "LLM client initialised: provider=%s model=%s",
