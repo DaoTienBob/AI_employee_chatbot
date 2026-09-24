@@ -1,5 +1,7 @@
 """Authentication endpoints (T03 / FR01): login and current-user lookup."""
 
+import secrets
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -15,10 +17,17 @@ from backend.app.schemas import (
 from backend.app.security import (
     create_access_token,
     get_current_user,
+    hash_password,
     verify_password,
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+# A valid bcrypt hash of an unguessable random value. Verifying against it for
+# unknown emails keeps the response time of "no such account" equal to
+# "wrong password", removing the timing side channel that would otherwise
+# allow account enumeration on email.
+_DUMMY_HASH = hash_password(secrets.token_urlsafe(32))
 
 # One generic error for unknown email AND wrong password: no account
 # enumeration (roadmap login sequence: invalid login -> error).
@@ -33,9 +42,12 @@ _INVALID_CREDENTIALS = HTTPException(
 def login(payload: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse:
     """Authenticate an employee and issue a JWT session token."""
     user = db.scalar(select(User).where(User.email == payload.email))
+    if user is None:
+        # Burn the same bcrypt work as a real check (timing safe), then fail.
+        verify_password(payload.password, _DUMMY_HASH)
+        raise _INVALID_CREDENTIALS
     if (
-        user is None
-        or not user.is_active
+        not user.is_active
         or not verify_password(payload.password, user.hashed_password)
     ):
         raise _INVALID_CREDENTIALS

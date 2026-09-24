@@ -5,12 +5,16 @@ administrator permission is a separate flag on the user, not a role. These
 accounts exist so login can be demonstrated before any admin UI exists.
 """
 
+import logging
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from backend.app.config import get_settings
 from backend.app.models import User
 from backend.app.security import hash_password
+
+logger = logging.getLogger(__name__)
 
 DEMO_PASSWORD = "password123"
 
@@ -37,11 +41,14 @@ def seed_demo_users(db: Session) -> None:
     deployments must provision real users out of band.
     """
     if not get_settings().debug:
-        print("Skipping demo user seeding (debug mode disabled)")
+        logger.info("Skipping demo user seeding (debug mode disabled)")
         return
+    # One existence query for the whole batch instead of one per account.
+    existing = set(db.scalars(
+        select(User.email).where(User.email.in_(DEMO_USERS))
+    ))
     for email, (full_name, role, is_admin) in DEMO_USERS.items():
-        exists = db.scalar(select(User).where(User.email == email))
-        if exists is not None:
+        if email in existing:
             continue
         db.add(
             User(
@@ -53,3 +60,4 @@ def seed_demo_users(db: Session) -> None:
             )
         )
     db.commit()
+    logger.info("Seeded %d demo user(s)", len(DEMO_USERS) - len(existing & set(DEMO_USERS)))

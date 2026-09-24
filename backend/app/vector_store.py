@@ -138,18 +138,36 @@ class VectorStore:
         if not queries:
             return []
         embeddings = self._embedding.encode(queries, query=True)
-        return [self._search_one([emb], role, k) for emb in embeddings]
+        # One SQLite grant lookup shared by every query variant: the original
+        # question and its rewrite see exactly the same authorization.
+        allowed = self._allowed_document_ids(role)
+        return [self._search_one([emb], role, k, allowed) for emb in embeddings]
 
-    def _search_one(self, query_embeddings: list, role: str, k: int) -> list[dict]:
-        # SQLite is authoritative even if index permissions drift after startup.
+    def _allowed_document_ids(self, role: str) -> list[str]:
+        """Active document ids this role may see, per current SQLite grants.
+
+        SQLite is authoritative even if index permissions drift after startup.
+        """
         from sqlalchemy import select
         from backend.app.database import SessionLocal
         from backend.app.models import Document
         with SessionLocal() as db:
-            allowed = [f"DOC_{id:03d}" for id in db.scalars(
+            return [f"DOC_{id:03d}" for id in db.scalars(
                 select(Document.id).where(Document.is_active.is_(True),
                                           getattr(Document, f"allowed_{role}").is_(True))
             )]
+
+    def _search_one(
+        self,
+        query_embeddings: list,
+        role: str,
+        k: int,
+        allowed: list[str] | None = None,
+    ) -> list[dict]:
+        # ``allowed`` lets a multi-query search compute the grant list once
+        # instead of re-querying SQLite for every query variant.
+        if allowed is None:
+            allowed = self._allowed_document_ids(role)
         if not allowed:
             return []
         result = self._collection.query(

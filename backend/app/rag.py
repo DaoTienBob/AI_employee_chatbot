@@ -49,14 +49,15 @@ logger = logging.getLogger(__name__)
 # Tunables
 # ---------------------------------------------------------------------------
 
-# Maximum cosine *distance* to consider a chunk as useful evidence.
-# Chroma uses cosine distance (0 = identical, 2 = opposite); 0.7 is a
-# reasonable threshold for "probably relevant".  Raise to be more permissive,
-# lower to be stricter.
-FALLBACK_DISTANCE_THRESHOLD: float = 0.7
+# Evidence relevance is governed by settings.fallback_distance_threshold
+# (FALLBACK_DISTANCE_THRESHOLD in .env). See config.py for the reasoning:
+# cosine scores are not comparable across embedding models.
 
-# How many recent messages to feed back to the LLM as conversation context.
-HISTORY_WINDOW: int = 6  # 3 turns = 3 user + 3 assistant
+# How many recent *user* questions feed rewriting and the prompt as context.
+# Prior assistant answers are deliberately excluded: they may contain evidence
+# the user is no longer authorized to see (T16 safety rule), so this is a
+# question-only window, not a full turn window.
+HISTORY_WINDOW: int = 3
 
 # System prompt template — authorized chunks are inserted as {context}.
 _SYSTEM_PROMPT = """\
@@ -158,18 +159,21 @@ def _get_or_create_conversation(
 
 
 def _load_history(conversation_id: int, db: Session) -> list[dict]:
-    """Return the last ``HISTORY_WINDOW`` messages as LLM-ready dicts.
+    """Return the last ``HISTORY_WINDOW`` *user questions* as context dicts.
 
     Only content from this conversation is loaded — no cross-user leakage.
+    Assistant answers are excluded by design: they may contain evidence from
+    a role or document version the user is no longer authorized to see, so
+    questions are intent context only, never evidence (T16).
     """
     rows = db.scalars(
         select(Message)
-        .where(Message.conversation_id == conversation_id)
+        .where(Message.conversation_id == conversation_id, Message.role == "user")
         .order_by(Message.id.desc())
         .limit(HISTORY_WINDOW)
     ).all()
     # Reverse to chronological order for the prompt.
-    return [{"role": m.role, "content": m.content} for m in reversed(rows)]
+    return [{"role": "user", "content": m.content} for m in reversed(rows)]
 
 
 def _build_sources(hits: list[dict]) -> list[SourceReference]:
@@ -283,15 +287,16 @@ def answer_question(
     # ------------------------------------------------------------------
     # 4. Fallback check (T17/FR07)
     # ------------------------------------------------------------------
+    threshold = settings.fallback_distance_threshold
     useful_hits = [
         h for h in hits
-        if h.get("distance") is None or h["distance"] <= FALLBACK_DISTANCE_THRESHOLD
+        if h.get("distance") is None or h["distance"] <= threshold
     ]
     logger.info(
         "RAG evidence | user=%d usable=%d threshold=%s",
         user.id,
         len(useful_hits),
-        FALLBACK_DISTANCE_THRESHOLD,
+        threshold,
     )
 
     if not useful_hits:

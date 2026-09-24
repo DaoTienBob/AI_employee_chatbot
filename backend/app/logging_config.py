@@ -63,9 +63,15 @@ def setup_logging() -> None:
         )
         root.addHandler(file_handler)
 
-    # Prop every library logger up to at least INFO so RAG messages show up,
-    # while still letting the root level govern the overall filter.
-    for name in ("backend.app", "uvicorn", "chromadb"):
+    # Prop our own loggers up to at least INFO so RAG messages show up, while
+    # still letting the root level govern the overall filter. ChromaDB is very
+    # chatty at INFO (every query logs internal telemetry) and would drown the
+    # RAG pipeline in the rotating file, so it stays at WARNING unless the
+    # configured level is stricter.
+    for name in ("backend.app", "uvicorn"):
         logger = logging.getLogger(name)
         logger.setLevel(level)
         logger.propagate = True
+    chroma = logging.getLogger("chromadb")
+    chroma.setLevel(min(level, logging.WARNING))
+    chroma.propagate = True
