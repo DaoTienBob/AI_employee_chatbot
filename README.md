@@ -11,7 +11,7 @@ authorized to access, with supporting source references.
 
 | Component          | Technology                     | Purpose                                                        |
 | ------------------ | ------------------------------ | -------------------------------------------------------------- |
-| Frontend           | React.js (Vite)                | Login, chat, source display, admin upload                      |
+| Frontend           | React.js (Vite)                | Login, chat, source display (admin upload via API/scripts)     |
 | Backend            | Python FastAPI                 | Auth, RBAC, APIs, document processing, RAG orchestration       |
 | Application data   | SQLite                         | Users, roles, document records, conversation history           |
 | Vector database    | ChromaDB                       | Chunk storage, embeddings, role-filtered semantic search       |
@@ -38,7 +38,7 @@ authorized to access, with supporting source references.
 │   │   └── routers/    # API routers (auth.py T03, documents.py T04/T11)
 │   ├── tests/          # Retrieval permission tests (T10/T12)
 │   └── requirements.txt
-├── frontend/           # React app (Vite) — login, chat, admin upload
+├── frontend/           # React app (Vite) — login, chat, source display
 ├── data/               # Runtime artifacts: SQLite, ChromaDB, uploads (gitignored)
 ├── docs/               # Architecture & sprint roadmap
 ├── .env.example        # Template for local configuration

@@ -179,6 +179,36 @@ body {
   line-height: 1.55;
 }
 
+/* Rendered markdown inside assistant messages */
+.message-content .markdown { white-space: normal; }
+.markdown > *:first-child { margin-top: 0; }
+.markdown > *:last-child { margin-bottom: 0; }
+.markdown p { margin: 0.3rem 0; }
+.markdown ul,
+.markdown ol { margin: 0.3rem 0; padding-left: 1.4rem; }
+.markdown li { margin: 0.12rem 0; }
+.markdown h1 { font-size: 1.15rem; margin: 0.5rem 0 0.25rem; }
+.markdown h2 { font-size: 1.05rem; margin: 0.5rem 0 0.25rem; }
+.markdown h3 { font-size: 1rem; margin: 0.45rem 0 0.2rem; }
+.markdown code {
+  background: #eef2f6;
+  padding: 0.1rem 0.3rem;
+  border-radius: 4px;
+  font-size: 0.9em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.markdown pre {
+  background: #f4f6f8;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 0.4rem 0;
+  white-space: pre;
+}
+.markdown pre code { background: none; padding: 0; }
+.markdown a { color: #0b5cff; }
+.markdown hr { border: none; border-top: 1px solid #dde3e9; margin: 0.5rem 0; }
+
 /* ===========================================================================
    Typing indicator
    =========================================================================== */

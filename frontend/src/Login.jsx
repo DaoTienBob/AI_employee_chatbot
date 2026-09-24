@@ -30,7 +30,7 @@ export default function Login({ onLogin }) {
         );
       }
       const data = await res.json();
-      onLogin(data.access_token, data.user);
+      onLogin(data.access_token, data.user, data.expires_in);
     } catch (err) {
       setError(err.message || "Network error — is the backend running?");
     } finally {
@@ -80,11 +80,13 @@ export default function Login({ onLogin }) {
           </button>
         </form>
 
-        <p className="login-hint">
-          Demo accounts: <code>employee@example.com</code>,{" "}
-          <code>hr@example.com</code>, <code>manager@example.com</code> —
-          password: <code>password123</code>
-        </p>
+        {import.meta.env.DEV && (
+          <p className="login-hint">
+            Demo accounts: <code>employee@example.com</code>,{" "}
+            <code>hr@example.com</code>, <code>manager@example.com</code> —
+            password: <code>password123</code>
+          </p>
+        )}
       </div>
     </main>
   );

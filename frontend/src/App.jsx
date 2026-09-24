@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import Login from "./Login";
+import Markdown from "./Markdown";
 import { errorMessage } from "./errors";
 
 const API_BASE = "/api";
@@ -9,6 +10,14 @@ const API_BASE = "/api";
 // ---------------------------------------------------------------------------
 const TOKEN_KEY = "ai_kb_token";
 const USER_KEY = "ai_kb_user";
+// Epoch-ms at which the access token expires. Persisted so a page reload can
+// still schedule a /auth/refresh *before* the token actually expires.
+const TOKEN_EXPIRES_KEY = "ai_kb_token_expires_at";
+
+// Refresh the session this long before expiry; retry gap for transient
+// network failures while the token is still valid.
+const REFRESH_BUFFER_MS = 60_000;
+const REFRESH_RETRY_MS = 15_000;
 
 function loadToken() {
   return localStorage.getItem(TOKEN_KEY) || null;
@@ -20,13 +29,25 @@ function loadUser() {
     return null;
   }
 }
-function saveAuth(token, user) {
+function saveAuth(token, user, expiresIn) {
   localStorage.setItem(TOKEN_KEY, token);
   localStorage.setItem(USER_KEY, JSON.stringify(user));
+  if (expiresIn && expiresIn > 0) {
+    localStorage.setItem(TOKEN_EXPIRES_KEY, String(Date.now() + expiresIn * 1000));
+  }
 }
 function clearAuth() {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
+  localStorage.removeItem(TOKEN_EXPIRES_KEY);
+}
+
+// Seconds until the persisted token expires, or null when unknown/absent.
+function loadTokenTtlSeconds() {
+  const raw = localStorage.getItem(TOKEN_EXPIRES_KEY);
+  const expiresAt = raw ? Number(raw) : NaN;
+  if (!Number.isFinite(expiresAt)) return null;
+  return Math.max(0, (expiresAt - Date.now()) / 1000);
 }
 
 // ---------------------------------------------------------------------------
@@ -48,6 +69,31 @@ async function apiFetch(path, options, onExpired) {
     throw new Error("Session expired. Please sign in again.");
   }
   return res;
+}
+
+// ---------------------------------------------------------------------------
+// Chat history loading — fetch the user's most recent conversation and return
+// all of its messages so old history can be re-rendered after sign in.
+// ---------------------------------------------------------------------------
+async function fetchMostRecentConversation(onExpired) {
+  const listRes = await apiFetch("/conversations", {}, onExpired);
+  if (!listRes.ok) return null;
+  const conversations = await listRes.json();
+  if (!Array.isArray(conversations) || conversations.length === 0) return null;
+
+  const conversationId = conversations[0].id; // newest first (backend ordering)
+  const msgsRes = await apiFetch(`/conversations/${conversationId}`, {}, onExpired);
+  if (!msgsRes.ok) return null;
+  const history = await msgsRes.json();
+
+  return {
+    conversationId,
+    messages: history.map((m) => ({
+      role: m.role,
+      content: m.content,
+      sources: [],
+    })),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -106,6 +152,7 @@ export default function App() {
   const [error, setError] = useState("");
   const [conversationId, setConversationId] = useState(null);
   const messagesEndRef = useRef(null);
+  const refreshTimerRef = useRef(null);
 
   // Check backend health on mount
   useEffect(() => {
@@ -126,7 +173,59 @@ export default function App() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Load the user's most recent conversation history whenever they are
+  // authenticated (on mount after a page refresh, and right after sign in).
+  useEffect(() => {
+    if (!token || !user) return;
+    let cancelled = false;
+
+    fetchMostRecentConversation(handleExpired)
+      .then((history) => {
+        if (cancelled) return;
+        if (history) {
+          setConversationId(history.conversationId);
+          setMessages(history.messages);
+        } else {
+          setMessages([
+            {
+              role: "assistant",
+              content: `Welcome, ${user.full_name}! I can help you find information in your authorized company documents. What would you like to know?`,
+              sources: [],
+            },
+          ]);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setMessages([
+            {
+              role: "assistant",
+              content: `Welcome, ${user.full_name}! I can help you find information in your authorized company documents. What would you like to know?`,
+              sources: [],
+            },
+          ]);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, user]);
+
+  // Every time a valid token is present, schedule a refresh covering both
+  // fresh logins and page reloads (expires_at is persisted with the token).
+  useEffect(() => {
+    if (!token || !user) return;
+    scheduleTokenRefresh(loadTokenTtlSeconds());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, user]);
+
+  // Clear any pending refresh timer when the app unmounts / session ends.
+  useEffect(() => () => clearTokenRefreshTimer(), []);
+
   function handleExpired() {
+    clearTokenRefreshTimer();
     setToken(null);
     setUser(null);
     setMessages([
@@ -139,21 +238,61 @@ export default function App() {
     setConversationId(null);
   }
 
-  function handleLogin(newToken, newUser) {
-    saveAuth(newToken, newUser);
+  function clearTokenRefreshTimer() {
+    if (refreshTimerRef.current) {
+      clearTimeout(refreshTimerRef.current);
+      refreshTimerRef.current = null;
+    }
+  }
+
+  // Refresh the session shortly before its token expires so long sessions do
+  // not end with an abrupt 401 mid-chat. /auth/refresh re-checks is_active and
+  // returns a fresh token, which is then rescheduled.
+  async function refreshAccessToken() {
+    try {
+      const res = await fetch(`${API_BASE}/auth/refresh`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${loadToken()}` },
+      });
+      if (res.status === 401) {
+        // Session really is gone (token expired / account deactivated).
+        handleExpired();
+        return;
+      }
+      const data = await res.json();
+      if (!res.ok) throw new Error("refresh failed");
+      saveAuth(data.access_token, data.user, data.expires_in);
+      setToken(data.access_token);
+      setUser(data.user);
+      scheduleTokenRefresh(data.expires_in);
+    } catch {
+      // Transient network error while the token is still valid: retry shortly
+      // instead of logging the user out.
+      clearTokenRefreshTimer();
+      refreshTimerRef.current = setTimeout(refreshAccessToken, REFRESH_RETRY_MS);
+    }
+  }
+
+  function scheduleTokenRefresh(expiresInSeconds) {
+    clearTokenRefreshTimer();
+    if (!expiresInSeconds || expiresInSeconds <= 0) return;
+    const delayMs = Math.max(0, expiresInSeconds * 1000 - REFRESH_BUFFER_MS);
+    refreshTimerRef.current = setTimeout(refreshAccessToken, delayMs);
+  }
+
+  function handleLogin(newToken, newUser, expiresIn) {
+    saveAuth(newToken, newUser, expiresIn);
     setToken(newToken);
     setUser(newUser);
     setConversationId(null);
-    setMessages([
-      {
-        role: "assistant",
-        content: `Welcome, ${newUser.full_name}! I can help you find information in your authorized company documents. What would you like to know?`,
-        sources: [],
-      },
-    ]);
+    scheduleTokenRefresh(expiresIn);
+    // The authenticated-history effect below will load the user's most recent
+    // conversation (or show a welcome message when they have no history yet).
+    setMessages([]);
   }
 
   function handleLogout() {
+    clearTokenRefreshTimer();
     clearAuth();
     setToken(null);
     setUser(null);
@@ -267,7 +406,13 @@ export default function App() {
               key={index}
               className={`message ${message.role}${message.fallback ? " fallback" : ""}`}
             >
-              <div className="message-content">{message.content}</div>
+              <div className="message-content">
+                {message.role === "assistant" ? (
+                  <Markdown content={message.content} />
+                ) : (
+                  message.content
+                )}
+              </div>
               {message.role === "assistant" && (
                 <Sources sources={message.sources} />
               )}
